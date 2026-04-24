@@ -244,10 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     // ✅ Langsung merge otomatis tanpa tunggu klik
                     if (selectedFrameData && photos.length > 0) {
-                        renderPreviewLayout(
-                            photos[selectedPhotoIndex],
-                            selectedFrameData.frame_file,
-                        );
+                        renderPreviewLayout(selectedFrameData.frame_file);
                     } else {
                         const merged =
                             document.getElementById("preview-merged");
@@ -835,7 +832,8 @@ document.addEventListener("DOMContentLoaded", () => {
         .getElementById("btn-capture-next")
         ?.addEventListener("click", () => {
             const photos = camera?.getPhotos() || [];
-            if (photos.length < 1) return;
+            const maxPhotos = selectedFrameData?.photo_slots?.length ?? 1;
+            if (photos.length < maxPhotos) return;
             stateMachine.setState(stateMachine.STATES.PREVIEW);
         });
 

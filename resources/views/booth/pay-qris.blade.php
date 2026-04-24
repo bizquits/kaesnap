@@ -124,11 +124,7 @@
     </div>
 
     <script type="application/json" id="pay-qris-config">
-        @json(['paymentStatusUrl' =>
-            $paymentStatusUrl,
-            'continueUrl' =>
-            $continueUrl
-        ])
+        {!! json_encode(['paymentStatusUrl' => $paymentStatusUrl, 'continueUrl' => $continueUrl]) !!}
     </script>
     <script>
         (function() {
