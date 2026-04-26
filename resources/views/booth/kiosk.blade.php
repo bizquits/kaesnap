@@ -39,7 +39,8 @@
         return ['id' => $f->id, 'name' => $f->name, 'preview' => $preview, 'frame_file' => $frameFile, 'photo_slots' => $f->photo_slots ?? [], 'template_width' => 1920, 'template_height' => 1080];
     })->values()) }}"
     data-setting="{{ json_encode(['copies' => $setting->copies ?? 1, 'max_retakes' => $setting->max_retakes ?? 3, 'countdown_seconds' => $setting->countdown_seconds ?? 3]) }}"
-    data-copy-price-options="{{ json_encode($copyPriceOptions ?? [1 => $pricePerSession ?? 0]) }}">
+    data-copy-price-options="{{ json_encode($copyPriceOptions ?? [1 => $pricePerSession ?? 0]) }}"
+    data-selected-frame-id="{{ $selectedFrameId ?? '' }}">
 
     {{-- Welcome Screen (IDLE state) - rendered with components from database --}}
     @include('booth.screens.welcome', ['welcomeComponents' => $welcomeComponents])

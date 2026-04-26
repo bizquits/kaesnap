@@ -58,12 +58,12 @@ export function initFrames(stateMachine, session) {
     });
 
     btnBack?.addEventListener("click", () =>
-        stateMachine.setState(stateMachine.STATES.PAYMENT),
+        stateMachine.setState(stateMachine.STATES.IDLE),
     );
     btnNext?.addEventListener("click", () => {
         if (!selectedFrameId) return;
         session.saveFrame(selectedFrameId).then(() => {
-            stateMachine.setState(stateMachine.STATES.CAPTURE);
+            stateMachine.setState(stateMachine.STATES.REVIEW_ORDER);
         });
     });
 

@@ -218,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
             },
             FRAME: () => {},
             CAPTURE: (state, prev) => {
-                if (prev === "FRAME") {
+                if (prev !== "PREVIEW") {
                     const countdownSeconds = setting.countdown_seconds ?? 3;
                     const selectedFrame = framesData.find(
                         (f) => f.id === getSelectedFrameId(),
@@ -299,7 +299,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function getSelectedFrameId() {
         const frameCard = document.querySelector(".frame-card.border-blue-600");
-        return frameCard ? parseInt(frameCard.dataset.frameId, 10) : null;
+        if (frameCard) return parseInt(frameCard.dataset.frameId, 10);
+
+        // Fallback: baca dari data attribute body (setelah redirect payment)
+        const fromBody = document.body.dataset.selectedFrameId;
+        return fromBody ? parseInt(fromBody, 10) : null;
     }
 
     /**
@@ -365,9 +369,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const frames = initFrames(stateMachine, session);
 
-    // Start → Tinjau Pesanan (REVIEW_ORDER), lalu lanjut ke Payment
-    function goToReviewOrder() {
-        stateMachine.setState(stateMachine.STATES.REVIEW_ORDER);
+    // Start → Pilih Frame (FRAME), lalu lanjut ke Tinjau Pesanan (REVIEW_ORDER)
+    function goToFrame() {
+        stateMachine.setState(stateMachine.STATES.FRAME);
     }
     const welcomeScreen = document.getElementById("screen-welcome");
     welcomeScreen?.addEventListener("click", (e) => {
@@ -376,25 +380,25 @@ document.addEventListener("DOMContentLoaded", () => {
             e.target.closest(".welcome-component--button")
         ) {
             e.preventDefault();
-            goToReviewOrder();
+            goToFrame();
         }
     });
     document.querySelectorAll(".welcome-start-btn").forEach((btn) => {
         btn.addEventListener("click", (e) => {
             e.preventDefault();
-            goToReviewOrder();
+            goToFrame();
         });
     });
     const btnStartById = document.getElementById("btn-start");
     if (btnStartById && !btnStartById.classList.contains("welcome-start-btn")) {
-        btnStartById.addEventListener("click", goToReviewOrder);
+        btnStartById.addEventListener("click", goToFrame);
     }
 
-    // Tinjau Pesanan: back, quantity +/- , lanjut ke pembayaran, kode promo
+    // Tinjau Pesanan: back → FRAME, quantity +/- , lanjut ke pembayaran, kode promo
     document
         .getElementById("btn-review-back")
         ?.addEventListener("click", () => {
-            stateMachine.setState(stateMachine.STATES.IDLE);
+            stateMachine.setState(stateMachine.STATES.FRAME);
         });
     const { min: reviewMinCopy, max: reviewMaxCopy } = (() => {
         const s = Object.keys(copyPriceOptions)
@@ -519,7 +523,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     });
                     const data = await res.json().catch(() => ({}));
                     if (res.ok && data.success) {
-                        stateMachine.setState(stateMachine.STATES.FRAME);
+                        stateMachine.setState(stateMachine.STATES.CAPTURE);
                     } else {
                         resetButton();
                     }
@@ -618,7 +622,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     });
                     const applyData = await applyRes.json().catch(() => ({}));
                     if (applyRes.ok && applyData.success) {
-                        stateMachine.setState(stateMachine.STATES.FRAME);
+                        stateMachine.setState(stateMachine.STATES.CAPTURE);
                     } else {
                         if (errEl) {
                             errEl.textContent =
@@ -722,7 +726,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 const data = await res.json().catch(() => ({}));
                 if (res.ok && data.success) {
-                    stateMachine.setState(stateMachine.STATES.FRAME);
+                    stateMachine.setState(stateMachine.STATES.CAPTURE);
                 } else {
                     console.error(
                         "Confirm free failed",
@@ -768,7 +772,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         errEl.classList.add("hidden");
                         errEl.textContent = "";
                     }
-                    stateMachine.setState(stateMachine.STATES.FRAME);
+                    stateMachine.setState(stateMachine.STATES.CAPTURE);
                 } else {
                     if (errEl) {
                         errEl.textContent =

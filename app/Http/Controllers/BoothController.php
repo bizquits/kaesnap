@@ -64,16 +64,16 @@ class BoothController extends Controller
         $framesForKiosk = $frames->map(function ($f) {
             $tw = 1920;
             $th = 1080;
-            
+
             // Handle both file paths and full URLs
             $frameFileUrl = (strpos($f->frame_file, 'http') === 0)
                 ? $f->frame_file
                 : asset('storage/' . $f->frame_file);
-            
+
             $previewUrl = (strpos($f->preview_image, 'http') === 0)
                 ? $f->preview_image
                 : asset('storage/' . $f->preview_image);
-            
+
             // Try to get image size (only for local files)
             if (strpos($f->frame_file, 'http') !== 0) {
                 $path = storage_path('app/public/' . $f->frame_file);
@@ -85,7 +85,7 @@ class BoothController extends Controller
                     }
                 }
             }
-            
+
             return [
                 'id' => $f->id,
                 'name' => $f->name,
@@ -182,9 +182,10 @@ class BoothController extends Controller
             'frames' => $frames,
             'framesForKiosk' => $framesForKiosk,
             'welcomeComponents' => $welcomeComponents,
-            'initialState' => 'FRAME',
+            'initialState' => 'CAPTURE',
             'pricePerSession' => $pricePerSession,
             'copyPriceOptions' => $copyPriceOptions,
+            'selectedFrameId' => $session->frame_id,
         ]);
     }
 
