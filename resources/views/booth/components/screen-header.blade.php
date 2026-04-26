@@ -29,7 +29,7 @@
     </div>
     <div class="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
         @if(!empty($centerId))
-        <span id="{{ $centerId }}" class="kiosk-screen-title text-lg font-semibold text-gray-900">{{ $centerLabel ?? '' }}</span>
+        <span id="{{ $centerId }}" class="kiosk-screen-title text-lg font-semibold text-blue-600">{{ $centerLabel ?? '' }}</span>
         @else
         <h1 class="kiosk-screen-title text-lg font-semibold text-blue-600 sm:text-xl">{{ $title ?? '' }}</h1>
         @if(!empty($subtitle))

@@ -246,6 +246,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (selectedFrameData && photos.length > 0) {
                         renderPreviewLayout(selectedFrameData.frame_file);
                     } else {
+                        console.log(selectedFrameData);
+                        console.log(photos.length);
                         const merged =
                             document.getElementById("preview-merged");
                         if (merged)
@@ -258,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (printBtn) {
                         printBtn.disabled = true;
                         printBtn.classList.remove(
-                            "bg-gray-900",
+                            "bg-blue-600",
                             "text-white",
                             "cursor-pointer",
                         );
@@ -296,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     function getSelectedFrameId() {
-        const frameCard = document.querySelector(".frame-card.border-gray-900");
+        const frameCard = document.querySelector(".frame-card.border-blue-600");
         return frameCard ? parseInt(frameCard.dataset.frameId, 10) : null;
     }
 
@@ -887,8 +889,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 y: s.y,
                 width: s.width,
                 height: s.height,
-                canvasWidth: 945,
-                canvasHeight: 1299,
+                canvasWidth: templateWidth,
+                canvasHeight: templateHeight,
                 templateWidth,
                 templateHeight,
             }));
@@ -915,7 +917,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     "cursor-not-allowed",
                 );
                 printBtn.classList.add(
-                    "bg-gray-900",
+                    "bg-blue-600",
                     "text-white",
                     "cursor-pointer",
                 );
@@ -951,8 +953,8 @@ document.addEventListener("DOMContentLoaded", () => {
             y: s.y,
             width: s.width,
             height: s.height,
-            canvasWidth: 945,
-            canvasHeight: 1299,
+            canvasWidth: templateWidth,
+            canvasHeight: templateHeight,
             templateWidth,
             templateHeight,
         }));

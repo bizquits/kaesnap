@@ -194,10 +194,10 @@ class FrameLayout extends Page
         }
     }
 
-    // public function updatedCanvasHeight(): void
-    // {
-    //     $this->canvasHeight = max(1299, (int) $this->canvasHeight);
-    // }
+    public function updatedCanvasHeight(): void
+    {
+        $this->canvasHeight = max(1299, (int) $this->canvasHeight);
+    }
 
     /**
      * Rescale existing slots to fit within new canvas bounds

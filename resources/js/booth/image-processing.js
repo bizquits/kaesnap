@@ -85,7 +85,7 @@ export function mergePhotoWithFrame(
                 for (let i = 0; i < photos.length; i++) {
                     if (!photos[i]) continue;
 
-                    const photoArea = photoSlots[i] ?? null;
+                    const photoArea = photoSlots[i] ?? defaultArea ?? null;
                     if (!photoArea) continue;
 
                     const { x, y, w, h } = resolveSlot(photoArea);

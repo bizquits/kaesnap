@@ -4,19 +4,19 @@
 <div class="kiosk-screen kiosk-screen--with-header flex h-full w-full flex-col">
     @include('booth.components.screen-header', [
     'backId' => 'btn-preview-back',
-    'title' => 'Pilih Satu Foto Terbaik',
+    'title' => 'Preview Foto',
     ])
 
     <div class="kiosk-screen-body flex-1 overflow-y-auto p-4 sm:p-6">
         <div class="mx-auto grid w-full max-w-4xl grid-cols-1 gap-6 md:grid-cols-2">
             <section>
-                <h2 class="mb-4 text-lg font-semibold text-gray-700">Foto Anda</h2>
+                <h2 class="mb-4 text-lg font-semibold text-blue-600">Foto Anda</h2>
                 <div id="preview-photo-grid" class="grid grid-cols-2 gap-4">
                     {{-- Photos injected by JS --}}
                 </div>
             </section>
             <section>
-                <h2 class="mb-4 text-lg font-semibold text-gray-700">Preview</h2>
+                <h2 class="mb-4 text-lg font-semibold text-blue-600">Preview</h2>
                 <div id="preview-merged" class="flex w-full max-h-100 items-center justify-center overflow-hidden rounded-2xl bg-white border border-gray-200/80 shadow-sm">
                     <p class="text-gray-500 text-sm">Pilih foto untuk melihat preview</p>
                 </div>

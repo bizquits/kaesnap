@@ -10,7 +10,7 @@
     @vite(['resources/css/booth.css', 'resources/js/booth/result.js'])
 </head>
 
-<body class="m-0 p-0 min-h-screen bg-white text-gray-900 font-sans"
+<body class="m-0 p-0 min-h-screen bg-white text-gray-900 font-sans overflow-scroll!"
     data-session-id="{{ $session->id }}"
     data-media="{{ json_encode($media->map(fn ($m) => ['id' => $m->id, 'url' => asset('storage/' . $m->file_path), 'type' => $m->type->value])->values()->all()) }}">
 
@@ -41,10 +41,14 @@
             <img id="result-popup-image" src="" alt="" class="max-h-[90vh] max-w-full object-contain rounded-lg shadow-2xl" />
             <div class="absolute right-3 top-3 z-10 flex gap-2">
                 <a id="result-popup-download" href="#" download class="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-gray-800 shadow-lg hover:bg-white" title="Download">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
                 </a>
                 <button type="button" id="result-popup-close" class="flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-gray-800 shadow-lg hover:bg-white" title="Tutup" aria-label="Tutup">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
                 </button>
             </div>
         </div>

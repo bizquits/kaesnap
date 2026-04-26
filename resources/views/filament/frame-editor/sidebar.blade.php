@@ -12,14 +12,14 @@
                     class="mt-1 block w-full rounded-lg border-gray-300 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
             </div>
 
-            <!-- <div>
+            <div>
                 <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">
                     Tinggi Bingkai
                 </label>
                 <input type="number" wire:model.live="canvasHeight"
                     min="1299" max="5000"
                     class="mt-1 block w-full rounded-lg border-gray-300 py-2 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
-            </div> -->
+            </div>
 
             <div>
                 <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">

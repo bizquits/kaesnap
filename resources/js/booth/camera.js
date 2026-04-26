@@ -228,14 +228,14 @@ export function createCamera(session, options = {}) {
         if (photos.length >= maxPhotos) {
             btnNext.classList.remove("bg-gray-200", "text-gray-500");
             btnNext.classList.add(
-                "bg-gray-900",
+                "bg-blue-600",
                 "text-white",
                 "cursor-pointer",
             );
         } else {
             btnNext.classList.add("bg-gray-200", "text-gray-500");
             btnNext.classList.remove(
-                "bg-gray-900",
+                "bg-blue-600",
                 "text-white",
                 "cursor-pointer",
             );
