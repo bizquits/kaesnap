@@ -92,6 +92,7 @@ class BoothController extends Controller
                 'preview' => $previewUrl,
                 'frame_file' => $frameFileUrl,
                 'photo_slots' => $f->photo_slots ?? [],
+                'photo_layer' => $f->photo_layer,
                 'template_width' => $tw,
                 'template_height' => $th,
             ];
@@ -168,6 +169,7 @@ class BoothController extends Controller
                 'preview' => $previewUrl,
                 'frame_file' => $frameFileUrl,
                 'photo_slots' => $f->photo_slots ?? [],
+                'photo_layer' => $f->photo_layer,
                 'template_width' => $tw,
                 'template_height' => $th,
             ];

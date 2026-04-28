@@ -144,7 +144,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const formatRp = (n) => "Rp " + (n || 0).toLocaleString("id-ID");
 
         // Harga sesi berdasarkan slot foto frame yang dipilih
-        const slotCount = selectedFrameData?.photo_slots?.length ?? 1;
+        const frame = framesData.find((f) => f.id === getSelectedFrameId());
+        const slotCount = frame?.photo_slots?.length ?? 1;
         const basePrice = pricePerSlot[slotCount] ?? pricePerSlot[1] ?? 0;
 
         // Total = harga sesi + (harga per eksemplar × eksemplar tambahan)
@@ -896,7 +897,18 @@ document.addEventListener("DOMContentLoaded", () => {
             const photos = camera?.getPhotos() || [];
             const slots = selectedFrameData?.photo_slots ?? [];
             const templateWidth = selectedFrameData?.template_width || 945;
-            const templateHeight = selectedFrameData?.template_height || 1299;
+            const templateHeight = selectedFrameData?.template_height;
+
+            // Cek Nilai Copies
+            const copies = selectedCopyCount;
+            const copies2 = setting.copies;
+
+            console.log("Selected Copies:", copies);
+            console.log("Setting Copies:", copies2);
+
+            // Cek nilai photo_layer
+            console.log("Photo Layer:", selectedFrameData);
+
             const mirrorChecked =
                 document.getElementById("preview-mirror")?.checked ?? false;
             const photoSlots = slots.map((s) => ({
@@ -912,6 +924,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const dataUrl = await mergePhotoWithFrame(photos, frameUrl, {
                 photoSlots,
                 mirror: mirrorChecked,
+                photoLayer: selectedFrameData?.photo_layer ?? "behind",
             });
             merged.innerHTML = "";
             const img = document.createElement("img");
@@ -960,7 +973,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const photos = camera?.getPhotos() || [];
         const slots = selectedFrameData?.photo_slots ?? [];
         const templateWidth = selectedFrameData?.template_width || 945;
-        const templateHeight = selectedFrameData?.template_height || 1299;
+        const templateHeight = selectedFrameData?.template_height;
         const mirrorChecked =
             document.getElementById("preview-mirror")?.checked ?? false;
         const photoSlots = slots.map((s) => ({
@@ -976,6 +989,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return mergePhotoWithFrame(photos, frameUrl, {
             photoSlots,
             mirror: mirrorChecked,
+            photoLayer: selectedFrameData?.photo_layer ?? "behind",
         });
     }
 

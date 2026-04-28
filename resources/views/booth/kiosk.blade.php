@@ -38,7 +38,7 @@
         $frameFile = (strpos($f->frame_file ?? '', 'http') === 0) 
             ? $f->frame_file 
             : asset('storage/' . $f->frame_file);
-        return ['id' => $f->id, 'name' => $f->name, 'preview' => $preview, 'frame_file' => $frameFile, 'photo_slots' => $f->photo_slots ?? [], 'template_width' => 1920, 'template_height' => 1080];
+        return ['id' => $f->id, 'name' => $f->name, 'preview' => $preview, 'frame_file' => $frameFile, 'photo_slots' => $f->photo_slots ?? [], 'photo_layer' => $f->photo_layer, 'template_width' => canvas_width, 'template_height' => canvas_height];
     })->values()) }}"
     data-setting="{{ json_encode(['copies' => $setting->copies ?? 1, 'max_retakes' => $setting->max_retakes ?? 3, 'countdown_seconds' => $setting->countdown_seconds ?? 3]) }}"
     data-copy-price-options="{{ $setting->copy_prices ?? 0 }}"

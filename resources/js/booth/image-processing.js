@@ -34,8 +34,11 @@ export function mergePhotoWithFrame(
             canvas.width = templateImg.width;
             canvas.height = templateImg.height;
 
-            // Draw template (background layer) once
-            ctx.drawImage(templateImg, 0, 0);
+            const photoLayer = options.photoLayer ?? "behind";
+
+            if (photoLayer === "behind") {
+                ctx.drawImage(templateImg, 0, 0);
+            }
 
             // Helper: resolve slot coordinates in canvas pixels
             function resolveSlot(photoArea) {
@@ -45,17 +48,17 @@ export function mergePhotoWithFrame(
                     photoArea.canvasWidth &&
                     photoArea.canvasHeight
                 ) {
-                    const ratioCenterX = photoArea.x / photoArea.canvasWidth;
-                    const ratioCenterY = photoArea.y / photoArea.canvasHeight;
+                    // x,y adalah top-left absolut → scale ke ukuran canvas aktual
+                    const ratioX = photoArea.x / photoArea.canvasWidth;
+                    const ratioY = photoArea.y / photoArea.canvasHeight;
                     const ratioW = photoArea.width / photoArea.canvasWidth;
                     const ratioH = photoArea.height / photoArea.canvasHeight;
-                    const centerX = ratioCenterX * canvas.width;
-                    const centerY = ratioCenterY * canvas.height;
+                    x = Math.round(ratioX * canvas.width);
+                    y = Math.round(ratioY * canvas.height);
                     w = Math.round(ratioW * canvas.width);
                     h = Math.round(ratioH * canvas.height);
-                    x = Math.round(centerX - w / 2);
-                    y = Math.round(centerY - h / 2);
                 } else if (photoArea) {
+                    // Legacy: x,y,width,height adalah rasio 0–1
                     x = Math.round(photoArea.x * canvas.width);
                     y = Math.round(photoArea.y * canvas.height);
                     w = Math.round(photoArea.width * canvas.width);
@@ -148,6 +151,10 @@ export function mergePhotoWithFrame(
                         ctx.drawImage(photoImg, drawX, drawY, drawW, drawH);
                     }
                     ctx.restore();
+                }
+
+                if (photoLayer === "front") {
+                    ctx.drawImage(templateImg, 0, 0);
                 }
 
                 resolve(canvas.toDataURL("image/png"));
