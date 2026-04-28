@@ -1,29 +1,43 @@
 /**
- * Kiosk Base Styles
- * ==================
- * Base styles for the photobooth kiosk interface.
- * This file handles:
- * - Screen container layout
- * - Common utilities
- * - Modal styles
- * - Button animations
+ * Kiosk Base Styles — Dark Refined Theme
  */
 
-/* ===========================
-   BASE LAYOUT
-   =========================== */
+/* ── Variables ─────────────────────────────────────────────────── */
+:root {
+    --bg: #0a0a0a;
+    --bg-card: #141414;
+    --bg-raised: #1c1c1c;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-md: rgba(255, 255, 255, 0.14);
+    --text: #f0f0f0;
+    --text-muted: #888;
+    --text-dim: #555;
+    --accent: #e8e8e8;
+    --accent-fg: #0a0a0a;
+    --primary: #fff;
+    --danger: #f87171;
+    --success: #4ade80;
+    --radius-sm: 10px;
+    --radius: 16px;
+    --radius-lg: 24px;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────── */
+* {
+    box-sizing: border-box;
+}
 
 body {
     margin: 0;
     padding: 0;
-    font-family:
-        ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-        "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-    background-color: #fff;
+    font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
     overflow: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
-/* Screen container: full viewport */
+/* ── Screen System ─────────────────────────────────────────────── */
 .booth-screen {
     position: absolute;
     inset: 0;
@@ -32,110 +46,63 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    background: var(--bg);
 }
 
-/* Non-active screens are hidden */
 .booth-screen.hidden {
-    display: none;
+    display: none !important;
 }
 
-/* ===========================
-   SCREEN WITH HEADER + SCROLL
-   =========================== */
+.booth-screen-white {
+    background: var(--bg);
+}
 
+/* ── Header ────────────────────────────────────────────────────── */
+.kiosk-screen-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.booth-screen-white .kiosk-screen-header {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+}
+
+/* ── Scrollable Body ───────────────────────────────────────────── */
 .kiosk-screen--with-header {
     display: flex;
     flex-direction: column;
     min-height: 0;
 }
-
 .kiosk-screen-body {
     min-height: 0;
     -webkit-overflow-scrolling: touch;
 }
 
 .kiosk-screen-body::-webkit-scrollbar {
-    width: 8px;
+    width: 4px;
 }
-
 .kiosk-screen-body::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 4px;
+    background: transparent;
 }
-
 .kiosk-screen-body::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
+    background: var(--border-md);
+    border-radius: 2px;
 }
 
-.kiosk-screen-body::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
-
-/* Frame grid: consistent card sizing */
-.kiosk-frame-card:focus-visible {
-    outline: 2px solid currentColor;
-    outline-offset: 2px;
-}
-
-/* ===========================
-   SCREEN VARIANTS
-   =========================== */
-
-/* Content screens (payment, frame, capture, preview, print, qr): abu-abu muda, minimalis */
-.booth-screen-white {
-    background-color: #f5f5f7;
-    color: #111;
-}
-
-/* Header di content screens: satu bidang dengan body, border halus */
-.booth-screen-white .kiosk-screen-header {
-    background-color: #f5f5f7;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-/* Kartu / area konten: putih lembut, shadow minimal */
-.booth-screen-white .payment-card,
-.booth-screen-white .kiosk-frame-card,
-.booth-screen-white .kiosk-screen-body section {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-
-.booth-screen-white .kiosk-frame-card {
-    background-color: #fff;
-}
-
-.booth-screen-white .kiosk-frame-card .kiosk-frame-card__image-wrapper {
-    background-color: #f9fafb;
-}
-
-/* Scrollbar track selaras dengan background */
-.booth-screen-white .kiosk-screen-body::-webkit-scrollbar-track {
-    background: #ebebed;
-}
-
-.booth-screen-white .kiosk-screen-body::-webkit-scrollbar-thumb {
-    background: #c7c7cc;
-}
-
-.booth-screen-white .kiosk-screen-body::-webkit-scrollbar-thumb:hover {
-    background: #a1a1a6;
-}
-
-/* Dark background screens */
-.booth-screen-dark {
-    background-color: #1a1a1a;
-    color: #fff;
-}
-
-/* ===========================
-   MODAL STYLES
-   =========================== */
-
+/* ── Modal ─────────────────────────────────────────────────────── */
 .booth-modal-backdrop {
     position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -147,100 +114,140 @@ body {
 }
 
 .booth-modal {
-    background-color: #fff;
-    border-radius: 1rem;
-    padding: 1.5rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-md);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
     max-width: 90%;
-    width: 400px;
+    width: 420px;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6);
 }
 
-/* Dark mode modal */
-.booth-modal-dark {
-    background-color: #1f2937;
-    color: #fff;
-}
-
-/* ===========================
-   BUTTON STYLES
-   =========================== */
-
-.booth-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.75rem 1.5rem;
-    font-weight: 600;
-    border-radius: 0.5rem;
-    transition: all 0.15s ease;
-    cursor: pointer;
-    border: none;
-    outline: none;
-}
-
-.booth-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.booth-btn-primary {
-    background-color: #3b82f6;
-    color: #fff;
-}
-
-.booth-btn-primary:hover:not(:disabled) {
-    background-color: #2563eb;
-}
-
-.booth-btn-secondary {
-    background-color: #6b7280;
-    color: #fff;
-}
-
-.booth-btn-secondary:hover:not(:disabled) {
-    background-color: #4b5563;
-}
-
-.booth-btn-white {
-    background-color: #fff;
-    color: #111;
-}
-
-.booth-btn-white:hover:not(:disabled) {
-    background-color: #f3f4f6;
-}
-
-/* ===========================
-   ICON BUTTONS
-   =========================== */
-
+/* ── Buttons ───────────────────────────────────────────────────── */
 .booth-icon-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.5rem;
-    border-radius: 0.5rem;
-    transition: opacity 0.15s ease;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-muted);
     cursor: pointer;
-    border: none;
-    background: transparent;
-    color: #fff;
+    transition: all 0.15s ease;
 }
 
 .booth-icon-btn:hover {
-    opacity: 0.7;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--text);
+    border-color: var(--border-md);
 }
 
-/* ===========================
-   ANIMATIONS
-   =========================== */
+.kiosk-btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
 
+.kiosk-btn-back:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    border-color: var(--border-md);
+}
+
+.kiosk-btn-primary {
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius-sm);
+    background: var(--primary);
+    color: var(--accent-fg);
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.kiosk-btn-primary:hover:not(:disabled) {
+    background: #e8e8e8;
+    transform: translateY(-1px);
+}
+
+.kiosk-btn-primary:disabled {
+    background: var(--bg-raised);
+    color: var(--text-dim);
+    cursor: not-allowed;
+}
+
+/* ── Frame Cards ───────────────────────────────────────────────── */
+.kiosk-frame-card {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    padding: 0.75rem !important;
+    cursor: pointer;
+    transition: all 0.2s ease !important;
+    outline: none;
+}
+
+.kiosk-frame-card:hover {
+    border-color: var(--border-md) !important;
+    background: var(--bg-raised) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+.kiosk-frame-card.selected,
+.kiosk-frame-card[data-selected="true"] {
+    border-color: rgba(255, 255, 255, 0.5) !important;
+    background: var(--bg-raised) !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3) !important;
+}
+
+.kiosk-frame-card__image-wrapper {
+    background: var(--bg-raised) !important;
+    border-radius: var(--radius-sm) !important;
+    overflow: hidden;
+}
+
+.kiosk-frame-card__label {
+    color: var(--text-muted) !important;
+    font-size: 0.75rem !important;
+    margin-top: 0.5rem;
+}
+
+/* ── Payment Cards ─────────────────────────────────────────────── */
+.payment-card {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer;
+}
+
+.payment-card:hover {
+    border-color: var(--border-md) !important;
+    background: var(--bg-raised) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ── Animations ────────────────────────────────────────────────── */
 @keyframes bounce {
     0%,
     100% {
-        transform: translateY(-5%);
+        transform: translateY(-6%);
         animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
     }
     50% {
@@ -248,42 +255,45 @@ body {
         animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
     }
 }
-
-.animate-bounce {
-    animation: bounce 1s infinite;
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
-
 @keyframes pulse {
     0%,
     100% {
         opacity: 1;
     }
     50% {
-        opacity: 0.5;
+        opacity: 0.4;
     }
 }
-
-.animate-pulse {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes spin {
+@keyframes fadeUp {
     from {
-        transform: rotate(0deg);
+        opacity: 0;
+        transform: translateY(12px);
     }
     to {
-        transform: rotate(360deg);
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
+.animate-bounce {
+    animation: bounce 1.4s ease-in-out infinite;
+}
 .animate-spin {
     animation: spin 1s linear infinite;
 }
+.animate-pulse {
+    animation: pulse 2s ease-in-out infinite;
+}
+.animate-fade-up {
+    animation: fadeUp 0.4s ease forwards;
+}
 
-/* ===========================
-   UTILITIES
-   =========================== */
-
+/* ── Utilities ─────────────────────────────────────────────────── */
 .sr-only {
     position: absolute;
     width: 1px;
@@ -294,4 +304,30 @@ body {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border-width: 0;
+}
+
+/* ── Inputs ────────────────────────────────────────────────────── */
+.kiosk-input {
+    width: 100%;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    color: var(--text);
+    font-size: 0.9375rem;
+    outline: none;
+    transition: border-color 0.15s ease;
+    -webkit-appearance: none;
+}
+
+.kiosk-input::placeholder {
+    color: var(--text-dim);
+}
+.kiosk-input:focus {
+    border-color: var(--border-md);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
+}
+
+select.kiosk-input {
+    cursor: pointer;
 }

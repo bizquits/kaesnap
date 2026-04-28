@@ -22,9 +22,9 @@ class ProjectSettings extends Page implements HasForms
     protected static string $view = 'filament.projects.settings';
 
     public function getSubNavigation(): array
-{
-    return [];
-}
+    {
+        return [];
+    }
 
     /**
      * =========================
@@ -71,32 +71,30 @@ class ProjectSettings extends Page implements HasForms
 
         // Pricing
         $setting = $record->setting;
-        $copyPrices = $setting?->copy_prices ?? [];
+        $pricePerSession = $setting?->price_per_session ?? []; // sekarang array
         $this->pricing = $setting
             ? array_merge($setting->only([
-                'price_per_session',
                 'copies',
                 'max_retakes',
                 'countdown_seconds',
                 'auto_print',
             ]), [
-                'price_1_copies' => $copyPrices['1'] ?? $setting->price_per_session ?? 0,
-                'price_2_copies' => $copyPrices['2'] ?? null,
-                'price_3_copies' => $copyPrices['3'] ?? null,
-                'price_4_copies' => $copyPrices['4'] ?? null,
-                'price_5_copies' => $copyPrices['5'] ?? null,
+                'copy_prices'    => $setting->copy_prices ?? 0, // integer
+                'price_slot_1'   => $pricePerSession['1'] ?? 0,
+                'price_slot_2'   => $pricePerSession['2'] ?? null,
+                'price_slot_3'   => $pricePerSession['3'] ?? null,
+                'price_slot_4'   => $pricePerSession['4'] ?? null,
             ])
             : [
-                'price_per_session' => 0,
-                'copies' => 1,
-                'price_1_copies' => 0,
-                'price_2_copies' => null,
-                'price_3_copies' => null,
-                'price_4_copies' => null,
-                'price_5_copies' => null,
-                'max_retakes' => 1,
+                'copy_prices'    => 0,
+                'copies'         => 1,
+                'price_slot_1'   => 0,
+                'price_slot_2'   => null,
+                'price_slot_3'   => null,
+                'price_slot_4'   => null,
+                'max_retakes'    => 1,
                 'countdown_seconds' => 3,
-                'auto_print' => true,
+                'auto_print'     => true,
             ];
 
         // Frames
@@ -142,56 +140,33 @@ class ProjectSettings extends Page implements HasForms
     {
         return $form
             ->schema([
-                Forms\Components\Placeholder::make('copy_prices_info')
-                    ->label('Harga per Jumlah Print')
-                    ->content('Atur harga untuk 1x, 2x, 3x, dst print. Tamu memilih jumlah print di layar pembayaran.'),
+                Forms\Components\Placeholder::make('info_slot')
+                    ->label('Harga Berdasarkan Slot Foto')
+                    ->content('Atur harga sesi berdasarkan jumlah slot foto pada frame yang dipilih user.'),
 
-                Forms\Components\Grid::make(5)
+                Forms\Components\Grid::make(4)
                     ->schema([
-                        Forms\Components\TextInput::make('price_1_copies')
-                            ->label('1x print')
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->default(0),
-                        Forms\Components\TextInput::make('price_2_copies')
-                            ->label('2x print')
-                            ->numeric()
-                            ->prefix('Rp'),
-                        Forms\Components\TextInput::make('price_3_copies')
-                            ->label('3x print')
-                            ->numeric()
-                            ->prefix('Rp'),
-                        Forms\Components\TextInput::make('price_4_copies')
-                            ->label('4x print')
-                            ->numeric()
-                            ->prefix('Rp'),
-                        Forms\Components\TextInput::make('price_5_copies')
-                            ->label('5x print')
-                            ->numeric()
-                            ->prefix('Rp'),
+                        Forms\Components\TextInput::make('price_slot_1')
+                            ->label('1 slot foto')->numeric()->prefix('Rp')->default(0),
+                        Forms\Components\TextInput::make('price_slot_2')
+                            ->label('2 slot foto')->numeric()->prefix('Rp'),
+                        Forms\Components\TextInput::make('price_slot_3')
+                            ->label('3 slot foto')->numeric()->prefix('Rp'),
+                        Forms\Components\TextInput::make('price_slot_4')
+                            ->label('4 slot foto')->numeric()->prefix('Rp'),
                     ]),
 
-                Forms\Components\TextInput::make('copies')
-                    ->label('Default Print Copies (jika tidak pakai copy_prices)')
-                    ->helperText('Digunakan jika copy_prices kosong. Biarkan 1.')
-                    ->numeric()
-                    ->minValue(1)
-                    ->default(1),
+                Forms\Components\TextInput::make('copy_prices')
+                    ->label('Harga per Eksemplar Tambahan')
+                    ->helperText('Harga flat yang ditambahkan per eksemplar cetak (integer). Contoh: 5000')
+                    ->numeric()->prefix('Rp')->default(0),
 
                 Forms\Components\TextInput::make('max_retakes')
-                    ->label('Max Retakes')
-                    ->numeric()
-                    ->minValue(0)
-                    ->required(),
+                    ->label('Max Retakes')->numeric()->minValue(0)->required(),
 
                 Forms\Components\TextInput::make('countdown_seconds')
                     ->label('Timer Take Photo (detik)')
-                    ->helperText('Durasi hitung mundur sebelum foto diambil (1–10 detik)')
-                    ->numeric()
-                    ->minValue(1)
-                    ->maxValue(10)
-                    ->default(3)
-                    ->required(),
+                    ->numeric()->minValue(1)->maxValue(10)->default(3)->required(),
 
                 Forms\Components\Toggle::make('auto_print')
                     ->label('Auto Print After Session'),
@@ -202,28 +177,26 @@ class ProjectSettings extends Page implements HasForms
     public function savePricing(): void
     {
         $pricing = $this->pricing;
-        $copyPrices = [];
-        foreach ([1, 2, 3, 4, 5] as $n) {
-            $val = $pricing["price_{$n}_copies"] ?? null;
+
+        // Bangun array price_per_session keyed by jumlah slot
+        $pricePerSession = [];
+        foreach ([1, 2, 3, 4] as $n) {
+            $val = $pricing["price_slot_{$n}"] ?? null;
             if ($val !== null && $val !== '') {
-                $copyPrices[(string) $n] = (float) $val;
+                $pricePerSession[(string) $n] = (int) $val;
             }
         }
-        if (empty($copyPrices)) {
-            $copyPrices = [1 => (float) ($pricing['price_per_session'] ?? 0)];
-        }
-        $pricing['copy_prices'] = $copyPrices;
-        $pricing['price_per_session'] = $copyPrices['1'] ?? (float) ($pricing['price_per_session'] ?? 0);
-        unset(
-            $pricing['price_1_copies'],
-            $pricing['price_2_copies'],
-            $pricing['price_3_copies'],
-            $pricing['price_4_copies'],
-            $pricing['price_5_copies']
-        );
+
         $this->record->setting()->updateOrCreate(
             ['project_id' => $this->record->id],
-            $pricing
+            [
+                'price_per_session'  => $pricePerSession, // array
+                'copy_prices'        => (int) ($pricing['copy_prices'] ?? 0), // integer
+                'copies'             => $pricing['copies'] ?? 1,
+                'max_retakes'        => $pricing['max_retakes'],
+                'countdown_seconds'  => $pricing['countdown_seconds'],
+                'auto_print'         => $pricing['auto_print'] ?? false,
+            ]
         );
     }
 
@@ -297,5 +270,4 @@ class ProjectSettings extends Page implements HasForms
             'filament.admin.resources.projects.index'
         );
     }
-    
 }

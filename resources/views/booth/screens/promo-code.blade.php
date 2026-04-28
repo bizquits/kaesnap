@@ -1,28 +1,37 @@
-{{--
-  Masukkan kode promo: minimal UI selaras dengan login/register (stone, rounded-xl). Tanpa Pindai QR.
---}}
-<div class="kiosk-screen flex h-full w-full flex-col items-center justify-center bg-stone-100 p-6">
-    <div class="w-full max-w-sm">
-        <h1 class="text-2xl font-semibold text-blue-600 tracking-tight mb-1">Masukkan kode promo</h1>
-        <p class="text-sm text-stone-500 mb-6">Masukkan kode voucher yang Anda miliki!</p>
+<div class="kiosk-screen flex h-full w-full flex-col items-center justify-center p-6">
+    <div class="w-full max-w-sm flex flex-col gap-5 animate-fade-up">
 
-        <label for="promo-code-input" class="sr-only">Kode promo</label>
-        <input
-            type="text"
-            id="promo-code-input"
-            placeholder="Masukkan kode promo"
-            autocomplete="off"
-            class="w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-stone-900 placeholder-stone-400 transition focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-400/20" />
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight" style="color:var(--text);">Kode Promo</h1>
+            <p class="mt-1 text-sm" style="color:var(--text-muted);">Masukkan kode voucher yang Anda miliki</p>
+        </div>
 
-        <p id="promo-code-error" class="pl-2 mt-2 hidden text-xs text-red-600"></p>
+        <div class="flex flex-col gap-2">
+            <label for="promo-code-input" class="sr-only">Kode promo</label>
+            <input type="text" id="promo-code-input"
+                placeholder="Contoh: PROMO2024"
+                autocomplete="off"
+                class="kiosk-input text-base tracking-widest"
+                style="letter-spacing:.12em; font-weight:600;" />
+            <p id="promo-code-error"
+                class="hidden pl-1 text-xs"
+                style="color:var(--danger);"></p>
+        </div>
 
-        <div class="mt-6 flex gap-3">
-            <button type="button" id="btn-promo-cancel" class="flex-1 rounded-xl border border-stone-200 bg-white py-3 text-sm font-medium text-blue-600 transition-colors hover:bg-stone-50 hover:text-blue-700">
+        <div class="flex gap-3">
+            <button type="button" id="btn-promo-cancel"
+                class="flex-1 py-3 text-sm font-medium transition-opacity hover:opacity-70"
+                style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-muted);">
                 Batal
             </button>
-            <button type="button" id="btn-promo-apply" class="flex-1 rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-stone-400 focus:ring-offset-2 focus:ring-offset-stone-100 disabled:opacity-60 disabled:pointer-events-none" data-default-label="Terapkan" data-loading-label="Memproses...">
+            <button type="button" id="btn-promo-apply"
+                class="kiosk-btn-primary flex-1 py-3.5 text-sm"
+                style="border-radius:var(--radius-sm);"
+                data-default-label="Terapkan"
+                data-loading-label="Memproses...">
                 Terapkan
             </button>
         </div>
+
     </div>
 </div>

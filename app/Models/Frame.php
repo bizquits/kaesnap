@@ -13,11 +13,14 @@ class Frame extends Model
         'frame_file',
         'is_active',
         'photo_slots',
+        'canvas_width',
+        'canvas_height',
+        'photo_layer', // 'behind' | 'front'
     ];
 
     protected $casts = [
         'photo_slots' => 'array',
-        'is_active' => 'boolean',
+        'is_active'   => 'boolean',
     ];
 
     public function user()
@@ -30,6 +33,4 @@ class Frame extends Model
             ->withPivot('is_active')
             ->withTimestamps();
     }
-
 }
-

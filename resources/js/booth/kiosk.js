@@ -29,27 +29,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let isUploaded = false; // Track if the photo has been uploaded to backend
 
-    const pricePerSession = parseFloat(
-        document.body.dataset.pricePerSession || "0",
-        10,
-    );
-    const copyPriceOptions = (() => {
+    // price_per_session sekarang array JSON { "1": 10000, "2": 15000, ... }
+    // keyed by jumlah slot foto frame
+    const pricePerSlot = (() => {
         try {
-            const raw = document.body.dataset.copyPriceOptions || "{}";
+            const raw = document.body.dataset.pricePerSession || "{}";
             const obj = JSON.parse(raw);
             const result = {};
             for (const [k, v] of Object.entries(obj)) {
                 const n = parseInt(k, 10);
-                if (n >= 1) result[n] = parseFloat(v, 10);
+                if (n >= 1) result[n] = parseInt(v, 10);
             }
-            return Object.keys(result).length ? result : { 1: pricePerSession };
+            return Object.keys(result).length ? result : { 1: 0 };
         } catch {
-            return { 1: pricePerSession };
+            return { 1: 0 };
         }
     })();
-    let selectedCopyCount = Math.min(
-        ...Object.keys(copyPriceOptions).map(Number),
+    // copy_prices sekarang integer: harga flat per eksemplar tambahan
+    const copyPricePerUnit = parseInt(
+        document.body.dataset.copyPriceOptions || "0",
+        10,
     );
+
+    let selectedCopyCount = 1;
     const createPaymentUrl = document.body.dataset.createPaymentUrl || "";
     const validateVoucherUrl = document.body.dataset.validateVoucherUrl || "";
     const applyVoucherUrl = document.body.dataset.applyVoucherUrl || "";
@@ -123,25 +125,35 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function getReviewOrderCopyLimits() {
-        const sorted = Object.keys(copyPriceOptions)
-            .map(Number)
-            .sort((a, b) => a - b);
-        return { min: Math.min(...sorted), max: Math.max(...sorted) };
+        // copy_prices integer, batas max mengikuti setting copies
+        const maxCopy = parseInt(
+            document.body.dataset.setting
+                ? (JSON.parse(document.body.dataset.setting).copies ?? 5)
+                : 5,
+            10,
+        );
+        return { min: 1, max: maxCopy };
     }
 
     function updateReviewOrderDisplay() {
         const copyValueEl = document.getElementById("review-copy-value");
-        const copyPriceEl = document.getElementById("review-copy-price");
         const subtotalEl = document.getElementById("review-subtotal");
         const totalEl = document.getElementById("review-total");
         const promoHintEl = document.getElementById("review-copy-promo");
-        const { min: minCopy } = getReviewOrderCopyLimits();
-        const price = copyPriceOptions[selectedCopyCount] ?? 0;
+        const minusBtn = document.getElementById("review-copy-minus");
         const formatRp = (n) => "Rp " + (n || 0).toLocaleString("id-ID");
+
+        // Harga sesi berdasarkan slot foto frame yang dipilih
+        const slotCount = selectedFrameData?.photo_slots?.length ?? 1;
+        const basePrice = pricePerSlot[slotCount] ?? pricePerSlot[1] ?? 0;
+
+        // Total = harga sesi + (harga per eksemplar × eksemplar tambahan)
+        const total =
+            basePrice + copyPricePerUnit * Math.max(0, selectedCopyCount - 1);
+
         if (copyValueEl) copyValueEl.textContent = selectedCopyCount;
-        if (copyPriceEl) copyPriceEl.textContent = formatRp(price);
-        if (subtotalEl) subtotalEl.textContent = formatRp(price);
-        if (totalEl) totalEl.textContent = formatRp(price);
+        if (subtotalEl) subtotalEl.textContent = formatRp(total);
+        if (totalEl) totalEl.textContent = formatRp(total);
         if (promoHintEl) {
             promoHintEl.classList.toggle("hidden", selectedCopyCount < 2);
             promoHintEl.textContent =
@@ -149,8 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     ? `Kamu dapat ${selectedCopyCount} strip!`
                     : "";
         }
-        const minusBtn = document.getElementById("review-copy-minus");
-        if (minusBtn) minusBtn.disabled = selectedCopyCount <= minCopy;
+        if (minusBtn) minusBtn.disabled = selectedCopyCount <= 1;
     }
 
     function initReviewOrderScreen() {
@@ -400,24 +411,20 @@ document.addEventListener("DOMContentLoaded", () => {
         ?.addEventListener("click", () => {
             stateMachine.setState(stateMachine.STATES.FRAME);
         });
-    const { min: reviewMinCopy, max: reviewMaxCopy } = (() => {
-        const s = Object.keys(copyPriceOptions)
-            .map(Number)
-            .sort((a, b) => a - b);
-        return { min: Math.min(...s), max: Math.max(...s) };
-    })();
+    const { min: reviewMinCopy, max: reviewMaxCopy } =
+        getReviewOrderCopyLimits();
     document
         .getElementById("review-copy-minus")
         ?.addEventListener("click", () => {
             if (selectedCopyCount <= reviewMinCopy) return;
-            selectedCopyCount = Math.max(reviewMinCopy, selectedCopyCount - 1);
+            selectedCopyCount--;
             updateReviewOrderDisplay();
         });
     document
         .getElementById("review-copy-plus")
         ?.addEventListener("click", () => {
             if (selectedCopyCount >= reviewMaxCopy) return;
-            selectedCopyCount = Math.min(reviewMaxCopy, selectedCopyCount + 1);
+            selectedCopyCount++;
             updateReviewOrderDisplay();
         });
     let reviewToPaymentInProgress = false;
@@ -443,7 +450,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     btn.textContent = defaultLabel;
                 }
             }
-            const price = copyPriceOptions[selectedCopyCount] ?? 0;
+            const slotCount = selectedFrameData?.photo_slots?.length ?? 1;
+            const basePrice = pricePerSlot[slotCount] ?? pricePerSlot[1] ?? 0;
+            const price =
+                basePrice +
+                copyPricePerUnit * Math.max(0, selectedCopyCount - 1);
             const reviewErrorEl = document.getElementById(
                 "review-payment-error",
             );

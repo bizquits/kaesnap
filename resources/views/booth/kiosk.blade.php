@@ -12,6 +12,8 @@
     @endphp
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: http://localhost:* http://127.0.0.1:*; frame-src 'self' blob:; style-src 'self' 'unsafe-inline' https: http://localhost:* http://127.0.0.1:*; connect-src 'self' wss: ws: https: http://localhost:* http://127.0.0.1:* blob:; img-src {{ $cspImgSrc }}; font-src 'self' data: https:">
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
     @vite(['resources/css/booth.css', 'resources/js/booth/kiosk.js'])
 </head>
 
@@ -20,7 +22,7 @@
     data-project-id="{{ $project->id }}"
     data-initial-state="{{ $initialState ?? 'IDLE' }}"
     data-csrf="{{ csrf_token() }}"
-    data-price-per-session="{{ $pricePerSession ?? 0 }}"
+    data-price-per-session="{{ json_encode($setting->price_per_session ?? []) }}"
     data-create-payment-url="{{ route('booth.session.create-payment', $session) }}"
     data-validate-voucher-url="{{ route('booth.session.validate-voucher', $session) }}"
     data-apply-voucher-url="{{ route('booth.session.apply-voucher', $session) }}"
@@ -39,7 +41,7 @@
         return ['id' => $f->id, 'name' => $f->name, 'preview' => $preview, 'frame_file' => $frameFile, 'photo_slots' => $f->photo_slots ?? [], 'template_width' => 1920, 'template_height' => 1080];
     })->values()) }}"
     data-setting="{{ json_encode(['copies' => $setting->copies ?? 1, 'max_retakes' => $setting->max_retakes ?? 3, 'countdown_seconds' => $setting->countdown_seconds ?? 3]) }}"
-    data-copy-price-options="{{ json_encode($copyPriceOptions ?? [1 => $pricePerSession ?? 0]) }}"
+    data-copy-price-options="{{ $setting->copy_prices ?? 0 }}"
     data-selected-frame-id="{{ $selectedFrameId ?? '' }}">
 
     {{-- Welcome Screen (IDLE state) - rendered with components from database --}}

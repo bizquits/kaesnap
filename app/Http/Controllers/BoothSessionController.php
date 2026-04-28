@@ -133,7 +133,10 @@ class BoothSessionController extends Controller
             return response()->json(['valid' => false, 'message' => 'Session sudah memiliki transaksi!'], 422);
         }
 
-        $totalBefore = (int) round($setting->getPriceForCopies($copyCount));
+        $frame       = \App\Models\Frame::find($session->frame_id);
+        $slotCount   = count($frame?->photo_slots ?? ['_']);
+        $basePrice   = (int) round($setting->getPriceBySlot($slotCount));
+        $totalBefore = $basePrice + ((int)($setting->copy_prices ?? 0) * max(0, $copyCount - 1));
         $discountAmount = $this->computeVoucherDiscount($voucher, $totalBefore);
         $amountAfterDiscount = max(0, $totalBefore - $discountAmount);
 
@@ -168,7 +171,10 @@ class BoothSessionController extends Controller
         $copyCount = max(1, (int) ($request->input('copy_count', 1)));
         $voucherCode = $request->input('voucher_code') ? trim((string) $request->input('voucher_code')) : null;
 
-        $amount = (int) round($setting->getPriceForCopies($copyCount));
+        $frame     = \App\Models\Frame::find($session->frame_id);
+        $slotCount = count($frame?->photo_slots ?? ['_']);
+        $basePrice = (int) round($setting->getPriceBySlot($slotCount));
+        $amount    = $basePrice + ((int)($setting->copy_prices ?? 0) * max(0, $copyCount - 1));
         $voucher = null;
         if ($voucherCode) {
             $voucher = Voucher::where('code', $voucherCode)->where('user_id', $project->user_id)->first();
