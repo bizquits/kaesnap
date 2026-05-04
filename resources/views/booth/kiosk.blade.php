@@ -31,6 +31,7 @@
     data-update-session-url="{{ route('booth.session.update', $session) }}"
     data-save-media-url="{{ route('booth.session.media', $session) }}"
     data-result-url="{{ url(route('booth.result', $session)) }}"
+    data-settings-pin="6666"
     data-frames="{{ json_encode($framesForKiosk ?? $frames->map(function ($f) {
         $preview = (strpos($f->preview_image ?? '', 'http') === 0) 
             ? $f->preview_image 
@@ -42,7 +43,8 @@
     })->values()) }}"
     data-setting="{{ json_encode(['copies' => $setting->copies ?? 1, 'max_retakes' => $setting->max_retakes ?? 3, 'countdown_seconds' => $setting->countdown_seconds ?? 3]) }}"
     data-copy-price-options="{{ $setting->copy_prices ?? 0 }}"
-    data-selected-frame-id="{{ $selectedFrameId ?? '' }}">
+    data-selected-frame-id="{{ $selectedFrameId ?? '' }}"
+    data-selected-copy-count="{{ $selectedCopyCount ?? 1 }}">
 
     {{-- Welcome Screen (IDLE state) - rendered with components from database --}}
     @include('booth.screens.welcome', ['welcomeComponents' => $welcomeComponents])

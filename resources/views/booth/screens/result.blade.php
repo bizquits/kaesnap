@@ -16,11 +16,29 @@
             </div>
 
             {{-- QR section --}}
-            <div id="result-qr-section" class="hidden w-full flex flex-col items-center gap-4">
+            <div id="result-qr-section" class="hidden w-full flex-col items-center gap-4">
+
+                {{-- Timer bar --}}
+                <div id="result-timer-wrap" class="w-full flex flex-col items-center gap-2 mb-10">
+                    <p class="text-xs" style="color:var(--text-muted);">
+                        Sesi berakhir dalam
+                        <span id="result-timer-count"
+                            class="font-semibold tabular-nums"
+                            style="color:var(--text);">60</span>s
+                    </p>
+                    <div class="w-full overflow-hidden rounded-full" style="height:4px; background:var(--border);">
+                        <div id="result-timer-bar"
+                            class="h-full rounded-full"
+                            style="width:100%; background:var(--primary); transition:width 1s linear; transform-origin:left;"></div>
+                    </div>
+                </div>
+
                 <p class="text-sm" style="color:var(--text-muted);">Scan QR untuk mengunduh foto Anda</p>
+
                 <div id="result-qr-code"
                     class="rounded-2xl p-5"
                     style="background:#fff; display:inline-block;"></div>
+
                 <div class="text-xs" style="color:var(--text-dim);">
                     <p>Atau kunjungi:</p>
                     <p id="result-url"

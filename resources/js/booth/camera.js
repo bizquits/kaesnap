@@ -7,6 +7,108 @@ import { isAndroid } from "./camera-utils.js";
 
 const STORAGE_KEY = "photobooth_selectedCameraId";
 
+// ─────────────────────────────────────────────────────────
+// AUDIO
+// ─────────────────────────────────────────────────────────
+
+let _audioCtx = null;
+
+function getAudioCtx() {
+    if (!_audioCtx) {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    // Resume jika suspended (browser autoplay policy)
+    if (_audioCtx.state === "suspended") {
+        _audioCtx.resume();
+    }
+    return _audioCtx;
+}
+
+/**
+ * Mainkan nada pendek.
+ * @param {number} freq - Frekuensi Hz
+ * @param {"sine"|"triangle"|"square"|"sawtooth"} type - Waveform
+ * @param {number} duration - Durasi detik
+ * @param {number} volume - 0–1
+ */
+function playBeep(freq = 880, type = "sine", duration = 0.12, volume = 0.4) {
+    try {
+        const ctx = getAudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+        // Envelope: fade in cepat, fade out smooth
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            ctx.currentTime + duration,
+        );
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + duration);
+    } catch (e) {
+        console.warn("[audio] playBeep error:", e);
+    }
+}
+
+/** Beep countdown: nada tinggi singkat */
+function playCountdownBeep() {
+    playBeep(880, "sine", 0.12, 0.35);
+}
+
+/** Beep capture: freq 520 triangle sesuai permintaan */
+function playCaptureBeep() {
+    playBeep(520, "triangle", 0.22, 0.45);
+}
+
+// ─────────────────────────────────────────────────────────
+// FLASH EFFECT
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Tampilkan flash putih sesaat di atas layar saat foto diambil.
+ * Membuat elemen overlay sementara jika belum ada.
+ */
+function triggerFlash() {
+    let flash = document.getElementById("capture-flash-overlay");
+    if (!flash) {
+        flash = document.createElement("div");
+        flash.id = "capture-flash-overlay";
+        flash.style.cssText = [
+            "position:fixed",
+            "inset:0",
+            "background:#fff",
+            "opacity:0",
+            "pointer-events:none",
+            "z-index:9999",
+            "transition:opacity 0.05s ease-in",
+        ].join(";");
+        document.body.appendChild(flash);
+    }
+
+    // Reset animasi
+    flash.style.transition = "none";
+    flash.style.opacity = "1";
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            flash.style.transition = "opacity 0.35s ease-out";
+            flash.style.opacity = "0";
+        });
+    });
+}
+
+// ─────────────────────────────────────────────────────────
+// CROP HELPER
+// ─────────────────────────────────────────────────────────
+
 /** Aspect ratio 4:3 (landscape) sesuai preview. */
 function cropVideoToLandscape(video) {
     const aspect = 4 / 3;
@@ -26,6 +128,10 @@ function cropVideoToLandscape(video) {
     }
     return { x: sx, y: sy, width: sw, height: sh };
 }
+
+// ─────────────────────────────────────────────────────────
+// MAIN
+// ─────────────────────────────────────────────────────────
 
 export function createCamera(session, options = {}) {
     const video = document.getElementById("video-preview");
@@ -67,16 +173,9 @@ export function createCamera(session, options = {}) {
             stream.getTracks().forEach((t) => t.stop());
             stream = null;
         }
-        if (video.srcObject) {
-            video.srcObject = null;
-        }
-        if (video.src) {
-            video.src = "";
-        }
-        // Reset filter saat stream dihentikan
-        if (video) {
-            video.style.filter = "";
-        }
+        if (video.srcObject) video.srcObject = null;
+        if (video.src) video.src = "";
+        if (video) video.style.filter = "";
         isActive = false;
         hasStarted = false;
     }
@@ -97,10 +196,7 @@ export function createCamera(session, options = {}) {
                   ? "environment"
                   : "environment";
         const constraints = useFacingMode
-            ? {
-                  video: { facingMode, aspectRatio: 4 / 3 },
-                  audio: false,
-              }
+            ? { video: { facingMode, aspectRatio: 4 / 3 }, audio: false }
             : {
                   video: {
                       deviceId: deviceId ? { ideal: deviceId } : true,
@@ -122,7 +218,6 @@ export function createCamera(session, options = {}) {
             captureStartOverlay?.classList.remove("hidden");
             captureStartOverlay?.classList.add("flex");
             setupExposureControl(stream);
-            // Apply exposure filter saat stream dimulai
             applyExposureFromSlider();
         } catch (err) {
             console.error("Camera error:", err);
@@ -154,17 +249,11 @@ export function createCamera(session, options = {}) {
     function applyExposureFromSlider() {
         if (!stream || !exposureSlider) return;
         const raw = Number(exposureSlider.value);
-
-        // Apply CSS filter untuk visual feedback langsung di preview
-        // Convert 0-100 to brightness/contrast: 0 = darker, 50 = normal, 100 = brighter
-        const brightness = 0.3 + (raw / 100) * 1.7; // 0.3 to 2.0
-        const contrast = 0.7 + (raw / 100) * 0.6; // 0.7 to 1.3
+        const brightness = 0.3 + (raw / 100) * 1.7;
+        const contrast = 0.7 + (raw / 100) * 0.6;
         const filterValue = `brightness(${brightness}) contrast(${contrast})`;
-        if (video) {
-            video.style.filter = filterValue;
-        }
+        if (video) video.style.filter = filterValue;
 
-        // Apply ke camera track jika didukung
         if (exposureSupported) {
             const track = stream.getVideoTracks()[0];
             if (!track) return;
@@ -186,8 +275,6 @@ export function createCamera(session, options = {}) {
         const ctx = canvas.getContext("2d");
         if (!ctx) return null;
 
-        // Jika kamera tidak mendukung exposureCompensation, kita pakai CSS filter di preview.
-        // drawImage tidak menangkap CSS filter, jadi terapkan filter yang sama ke canvas.
         if (!exposureSupported && exposureSlider) {
             const raw = Number(exposureSlider.value);
             const brightness = 0.3 + (raw / 100) * 1.7;
@@ -210,8 +297,8 @@ export function createCamera(session, options = {}) {
             canvas.height,
         );
         ctx.restore();
-
         ctx.filter = "none";
+
         return canvas.toDataURL("image/png");
     }
 
@@ -263,16 +350,22 @@ export function createCamera(session, options = {}) {
         });
     }
 
+    /**
+     * Countdown dengan beep di setiap angka.
+     */
     async function doCountdown(callback) {
         if (!countdownOverlay || !countdownNumber) return callback?.();
         captureStartOverlay?.classList.add("hidden");
         captureStartOverlay?.classList.remove("flex");
         countdownOverlay.classList.remove("hidden");
         countdownOverlay.classList.add("flex");
+
         for (let i = countdownDelay; i > 0; i--) {
             countdownNumber.textContent = i;
+            playCountdownBeep(); // ← beep setiap angka
             await new Promise((r) => setTimeout(r, 1000));
         }
+
         countdownOverlay.classList.add("hidden");
         countdownOverlay.classList.remove("flex");
         captureStartOverlay?.classList.remove("hidden");
@@ -284,6 +377,8 @@ export function createCamera(session, options = {}) {
         if (isCapturing) return;
         isCapturing = true;
         doCountdown(() => {
+            playCaptureBeep(); // ← beep capture
+            triggerFlash(); // ← flash putih
             const dataUrl = captureFromVideo();
             if (dataUrl) {
                 photos[index] = dataUrl;
@@ -311,6 +406,8 @@ export function createCamera(session, options = {}) {
                 return;
             }
             doCountdown(() => {
+                playCaptureBeep(); // ← beep capture
+                triggerFlash(); // ← flash putih
                 const dataUrl = captureFromVideo();
                 if (dataUrl) {
                     photos.push(dataUrl);

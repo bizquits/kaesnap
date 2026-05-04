@@ -49,6 +49,21 @@
                         <span style="color:var(--text-muted);">Subtotal</span>
                         <span id="review-subtotal" style="color:var(--text);">Rp 0</span>
                     </div>
+
+                    {{-- Baris diskon: hanya tampil jika ada promo aktif --}}
+                    <div id="review-discount-row" class="hidden flex justify-between text-sm">
+                        <span class="flex items-center gap-1.5" style="color:var(--success);">
+                            <svg class="h-3.5 w-3.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-ticket-percent-icon lucide-ticket-percent">
+                                <path d="M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+                                <path d="M9 9h.01" />
+                                <path d="m15 9-6 6" />
+                                <path d="M15 15h.01" />
+                            </svg>
+                            <span id="review-discount-label">Potongan Voucher</span>
+                        </span>
+                        <span id="review-discount" style="color:var(--success);">-Rp 0</span>
+                    </div>
+
                     <div class="flex justify-between text-sm font-semibold">
                         <span style="color:var(--text);">Total</span>
                         <span id="review-total" style="color:var(--text);">Rp 0</span>
@@ -61,11 +76,48 @@
                 style="background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.2); color:var(--danger);"
                 role="alert"></div>
 
+            {{-- Tombol toggle promo --}}
             <button type="button" id="btn-review-promo"
                 class="w-full py-3 text-sm font-medium transition-opacity hover:opacity-70"
                 style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-muted);">
                 Punya kode promo?
             </button>
+
+            {{-- Inline promo section (hidden by default) --}}
+            <div id="review-promo-section" class="hidden flex-col gap-2">
+                <div class="flex gap-2">
+                    <input
+                        type="text"
+                        id="review-promo-input"
+                        placeholder="Masukkan kode promo"
+                        autocomplete="off"
+                        class="kiosk-input flex-1 text-sm"
+                        style="padding-top:0.625rem; padding-bottom:0.625rem;" />
+                    <button
+                        type="button"
+                        id="btn-review-promo-apply"
+                        class="kiosk-btn-primary shrink-0 text-sm px-4"
+                        style="border-radius:var(--radius-sm);"
+                        data-default-label="Pakai"
+                        data-loading-label="...">
+                        Pakai
+                    </button>
+                </div>
+                <p id="review-promo-error" class="hidden text-xs pl-1" style="color:var(--danger);"></p>
+                <div id="review-promo-success"
+                    class="hidden items-center gap-1.5 text-xs pl-1"
+                    style="color:var(--success);">
+                    <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span id="review-promo-success-msg">Voucher berhasil diterapkan!</span>
+                    <button type="button" id="btn-review-promo-remove"
+                        class="ml-auto text-xs underline underline-offset-2 hover:opacity-70"
+                        style="color:var(--text-muted);">
+                        Hapus
+                    </button>
+                </div>
+            </div>
 
             <button type="button" id="btn-review-to-payment"
                 class="kiosk-btn-primary w-full py-4 text-sm"

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Project;
 use App\Models\BoothSession;
 use App\Models\Transaction;
+use App\Models\SessionPreference;
 use App\Enums\SessionStatusEnum;
 use App\Enums\TransactionStatusEnum;
 use App\Services\SettlementService;
@@ -188,6 +189,7 @@ class BoothController extends Controller
             'pricePerSession' => $pricePerSession,
             'copyPriceOptions' => $copyPriceOptions,
             'selectedFrameId' => $session->frame_id,
+            'selectedCopyCount' => $session->preference?->copy_count ?? 1,
         ]);
     }
 

@@ -27,10 +27,20 @@ document.addEventListener("DOMContentLoaded", () => {
     let mergedImageDataUrl = null;
     let selectedFrameData = null;
 
-    let isUploaded = false; // Track if the photo has been uploaded to backend
+    let isUploaded = false;
 
-    // price_per_session sekarang array JSON { "1": 10000, "2": 15000, ... }
-    // keyed by jumlah slot foto frame
+    // Result screen auto-redirect timer
+    let _resultTimerInterval = null;
+    const RESULT_TIMEOUT_SECONDS = 60;
+
+    // ── Promo/voucher state (inline on review-order screen) ──
+    let appliedVoucherCode = null;
+    let appliedDiscountAmount = 0;
+    let appliedVoucherType = null; // 'fixed' | 'percent'
+    let appliedVoucherValue = 0; // nilai mentah dari server
+    let promoApplyInProgress = false;
+
+    // price_per_session: array JSON { "1": 10000, "2": 15000, ... }
     const pricePerSlot = (() => {
         try {
             const raw = document.body.dataset.pricePerSession || "{}";
@@ -45,7 +55,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return { 1: 0 };
         }
     })();
-    // copy_prices sekarang integer: harga flat per eksemplar tambahan
+
+    // copy_prices: integer — harga flat per eksemplar tambahan
     const copyPricePerUnit = parseInt(
         document.body.dataset.copyPriceOptions || "0",
         10,
@@ -58,12 +69,232 @@ document.addEventListener("DOMContentLoaded", () => {
     const confirmFreeUrl = document.body.dataset.confirmFreeUrl || "";
     const csrfToken = document.body.dataset.csrf || "";
 
+    // ─────────────────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────────────────
+
+    function getSelectedFrameId() {
+        const frameCard = document.querySelector(".frame-card.border-blue-600");
+        if (frameCard) return parseInt(frameCard.dataset.frameId, 10);
+        const fromBody = document.body.dataset.selectedFrameId;
+        return fromBody ? parseInt(fromBody, 10) : null;
+    }
+
+    function formatRp(n) {
+        return "Rp " + (n || 0).toLocaleString("id-ID");
+    }
+
+    /** Hitung subtotal berdasarkan frame yang dipilih + jumlah cetak */
+    function calcSubtotal() {
+        const frame = framesData.find((f) => f.id === getSelectedFrameId());
+        const slotCount = frame?.photo_slots?.length ?? 1;
+        const basePrice = pricePerSlot[slotCount] ?? pricePerSlot[1] ?? 0;
+        return (
+            basePrice + copyPricePerUnit * Math.max(0, selectedCopyCount - 1)
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // PROMO UI HELPERS
+    // ─────────────────────────────────────────────────────────
+
+    function _resetPromoUI() {
+        const section = document.getElementById("review-promo-section");
+        const input = document.getElementById("review-promo-input");
+        const errEl = document.getElementById("review-promo-error");
+        const successEl = document.getElementById("review-promo-success");
+        const btn = document.getElementById("btn-review-promo");
+        const discountRow = document.getElementById("review-discount-row");
+
+        if (section) {
+            section.classList.add("hidden");
+            section.classList.remove("flex");
+        }
+        if (input) {
+            input.value = "";
+            input.disabled = false;
+        }
+        if (errEl) {
+            errEl.textContent = "";
+            errEl.classList.add("hidden");
+        }
+        if (successEl) {
+            successEl.classList.add("hidden");
+            successEl.classList.remove("flex");
+        }
+        // Tampilkan kembali tombol promo
+        if (btn) {
+            btn.textContent = "Punya kode promo?";
+            btn.classList.remove("hidden");
+        }
+        if (discountRow) {
+            discountRow.classList.add("hidden");
+            discountRow.classList.remove("flex");
+        }
+
+        // Reset state voucher
+        appliedVoucherType = null;
+        appliedVoucherValue = 0;
+
+        // Reset apply button
+        const applyBtn = document.getElementById("btn-review-promo-apply");
+        if (applyBtn) {
+            applyBtn.disabled = false;
+            applyBtn.classList.remove("hidden");
+            applyBtn.textContent = applyBtn.dataset.defaultLabel ?? "Pakai";
+        }
+    }
+
+    /**
+     * Hitung ulang diskon secara lokal — tanpa API call, instan.
+     * Dipanggil saat copy count berubah dan voucher sedang aktif.
+     */
+    function recalcDiscount() {
+        if (!appliedVoucherCode || !appliedVoucherType) return;
+        const subtotal = calcSubtotal();
+        if (appliedVoucherType === "percent") {
+            appliedDiscountAmount = Math.round(
+                (subtotal * Math.min(100, Math.max(0, appliedVoucherValue))) /
+                    100,
+            );
+        } else {
+            // fixed: diskon tidak melebihi subtotal
+            appliedDiscountAmount = Math.min(subtotal, appliedVoucherValue);
+        }
+        // Perbarui pesan sukses
+        const successMsg = document.getElementById("review-promo-success-msg");
+        if (successMsg) {
+            successMsg.textContent =
+                appliedDiscountAmount > 0
+                    ? `Voucher "${appliedVoucherCode}" diterapkan! Hemat ${formatRp(appliedDiscountAmount)}`
+                    : `Voucher "${appliedVoucherCode}" diterapkan (gratis)!`;
+        }
+    }
+
+    function _showPromoSuccess(code, discountAmt) {
+        const errEl = document.getElementById("review-promo-error");
+        const successEl = document.getElementById("review-promo-success");
+        const successMsg = document.getElementById("review-promo-success-msg");
+        const input = document.getElementById("review-promo-input");
+
+        if (errEl) {
+            errEl.textContent = "";
+            errEl.classList.add("hidden");
+        }
+        if (input) input.disabled = true;
+        if (successEl) {
+            successEl.classList.remove("hidden");
+            successEl.classList.add("flex");
+        }
+        if (successMsg) {
+            successMsg.textContent =
+                discountAmt > 0
+                    ? `Voucher "${code}" diterapkan! Hemat ${formatRp(discountAmt)}`
+                    : `Voucher "${code}" diterapkan (gratis)!`;
+        }
+
+        const applyBtn = document.getElementById("btn-review-promo-apply");
+        if (applyBtn) applyBtn.classList.add("hidden");
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // REVIEW ORDER DISPLAY
+    // ─────────────────────────────────────────────────────────
+
+    function updateReviewOrderDisplay() {
+        const copyValueEl = document.getElementById("review-copy-value");
+        const subtotalEl = document.getElementById("review-subtotal");
+        const totalEl = document.getElementById("review-total");
+        const discountRowEl = document.getElementById("review-discount-row");
+        const discountEl = document.getElementById("review-discount");
+        const discountLabelEl = document.getElementById(
+            "review-discount-label",
+        );
+        const promoHintEl = document.getElementById("review-copy-promo");
+        const minusBtn = document.getElementById("review-copy-minus");
+
+        const subtotal = calcSubtotal();
+        const discountAmt = appliedDiscountAmount || 0;
+        const total = Math.max(0, subtotal - discountAmt);
+
+        if (copyValueEl) copyValueEl.textContent = selectedCopyCount;
+        if (subtotalEl) subtotalEl.textContent = formatRp(subtotal);
+        if (totalEl) totalEl.textContent = formatRp(total);
+
+        // Discount row
+        if (discountRowEl) {
+            if (discountAmt > 0 && appliedVoucherCode) {
+                discountRowEl.classList.remove("hidden");
+                discountRowEl.classList.add("flex");
+                if (discountLabelEl)
+                    discountLabelEl.textContent = `Voucher (${appliedVoucherCode})`;
+                if (discountEl)
+                    discountEl.textContent = "-" + formatRp(discountAmt);
+            } else {
+                discountRowEl.classList.add("hidden");
+                discountRowEl.classList.remove("flex");
+            }
+        }
+
+        if (promoHintEl) {
+            promoHintEl.classList.toggle("hidden", selectedCopyCount < 2);
+            promoHintEl.textContent =
+                selectedCopyCount >= 2
+                    ? `Kamu dapat ${selectedCopyCount} strip!`
+                    : "";
+        }
+        if (minusBtn) minusBtn.disabled = selectedCopyCount <= 1;
+    }
+
+    function getReviewOrderCopyLimits() {
+        const maxCopy = parseInt(
+            document.body.dataset.setting
+                ? (JSON.parse(document.body.dataset.setting).copies ?? 5)
+                : 5,
+            10,
+        );
+        return { min: 1, max: maxCopy };
+    }
+
+    function initReviewOrderScreen() {
+        const { min: minCopy, max: maxCopy } = getReviewOrderCopyLimits();
+        if (selectedCopyCount < minCopy || selectedCopyCount > maxCopy) {
+            selectedCopyCount = minCopy;
+        }
+
+        // Reset promo state setiap masuk ke screen ini
+        appliedVoucherCode = null;
+        appliedDiscountAmount = 0;
+        _resetPromoUI();
+
+        updateReviewOrderDisplay();
+        document
+            .getElementById("review-payment-error")
+            ?.classList.add("hidden");
+        document.getElementById("review-payment-error")?.replaceChildren();
+
+        // Reset tombol lanjutkan
+        reviewToPaymentInProgress = false;
+        const reviewBtn = document.getElementById("btn-review-to-payment");
+        if (reviewBtn) {
+            reviewBtn.disabled = false;
+            reviewBtn.removeAttribute("aria-busy");
+            reviewBtn.textContent =
+                reviewBtn.dataset.defaultLabel ?? "Lanjutkan ke Pembayaran";
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // PAYMENT COPY SELECTOR (legacy screen, mungkin tidak dipakai)
+    // ─────────────────────────────────────────────────────────
+
     function initPaymentCopySelector() {
         const container = document.getElementById("payment-copy-options");
         const priceEl = document.getElementById("payment-selected-price");
         const freeBtn = document.getElementById("btn-payment-free");
         if (!container) return;
         container.innerHTML = "";
+        const copyPriceOptions = { [selectedCopyCount]: calcSubtotal() };
         const sorted = Object.keys(copyPriceOptions)
             .map(Number)
             .sort((a, b) => a - b);
@@ -79,34 +310,6 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="text-2xl font-bold ${selectedCopyCount === n ? "text-white" : "text-gray-900"}">${n}x</div>
         <div class="mt-1 text-sm font-medium ${selectedCopyCount === n ? "text-gray-200" : "text-gray-600"}">${price > 0 ? "+ Rp" + price.toLocaleString("id-ID") : "Gratis"}</div>
       `;
-            btn.addEventListener("click", () => {
-                selectedCopyCount = n;
-                container.querySelectorAll(".payment-copy-btn").forEach((b) => {
-                    const isSel = parseInt(b.dataset.copies, 10) === n;
-                    b.classList.toggle("border-gray-900", isSel);
-                    b.classList.toggle("bg-gray-900", isSel);
-                    b.classList.toggle("border-gray-200", !isSel);
-                    b.classList.toggle("bg-white", !isSel);
-                    b.innerHTML = `
-            <div class="text-sm ${isSel ? "text-gray-200" : "text-gray-500"}">Print</div>
-            <div class="text-2xl font-bold ${isSel ? "text-white" : "text-gray-900"}">${b.dataset.copies}x</div>
-            <div class="mt-1 text-sm font-medium ${isSel ? "text-gray-200" : "text-gray-600"}">${parseFloat(b.dataset.price) > 0 ? "Rp" + parseFloat(b.dataset.price).toLocaleString("id-ID") : "Gratis"}</div>
-          `;
-                });
-                const selPrice = copyPriceOptions[n] ?? 0;
-                if (priceEl) {
-                    priceEl.classList.remove("hidden");
-                    priceEl.textContent =
-                        selPrice > 0
-                            ? `Total: Rp ${selPrice.toLocaleString("id-ID")}`
-                            : "Total: Gratis";
-                }
-                if (freeBtn) {
-                    freeBtn.textContent =
-                        selPrice > 0 ? "Pilih opsi gratis" : "Lanjut (Gratis)";
-                    freeBtn.disabled = selPrice > 0;
-                }
-            });
             container.appendChild(btn);
         });
         const firstPrice = copyPriceOptions[selectedCopyCount] ?? 0;
@@ -124,67 +327,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function getReviewOrderCopyLimits() {
-        // copy_prices integer, batas max mengikuti setting copies
-        const maxCopy = parseInt(
-            document.body.dataset.setting
-                ? (JSON.parse(document.body.dataset.setting).copies ?? 5)
-                : 5,
-            10,
-        );
-        return { min: 1, max: maxCopy };
-    }
-
-    function updateReviewOrderDisplay() {
-        const copyValueEl = document.getElementById("review-copy-value");
-        const subtotalEl = document.getElementById("review-subtotal");
-        const totalEl = document.getElementById("review-total");
-        const promoHintEl = document.getElementById("review-copy-promo");
-        const minusBtn = document.getElementById("review-copy-minus");
-        const formatRp = (n) => "Rp " + (n || 0).toLocaleString("id-ID");
-
-        // Harga sesi berdasarkan slot foto frame yang dipilih
-        const frame = framesData.find((f) => f.id === getSelectedFrameId());
-        const slotCount = frame?.photo_slots?.length ?? 1;
-        const basePrice = pricePerSlot[slotCount] ?? pricePerSlot[1] ?? 0;
-
-        // Total = harga sesi + (harga per eksemplar × eksemplar tambahan)
-        const total =
-            basePrice + copyPricePerUnit * Math.max(0, selectedCopyCount - 1);
-
-        if (copyValueEl) copyValueEl.textContent = selectedCopyCount;
-        if (subtotalEl) subtotalEl.textContent = formatRp(total);
-        if (totalEl) totalEl.textContent = formatRp(total);
-        if (promoHintEl) {
-            promoHintEl.classList.toggle("hidden", selectedCopyCount < 2);
-            promoHintEl.textContent =
-                selectedCopyCount >= 2
-                    ? `Kamu dapat ${selectedCopyCount} strip!`
-                    : "";
-        }
-        if (minusBtn) minusBtn.disabled = selectedCopyCount <= 1;
-    }
-
-    function initReviewOrderScreen() {
-        const { min: minCopy, max: maxCopy } = getReviewOrderCopyLimits();
-        if (selectedCopyCount < minCopy || selectedCopyCount > maxCopy) {
-            selectedCopyCount = minCopy;
-        }
-        updateReviewOrderDisplay();
-        document
-            .getElementById("review-payment-error")
-            ?.classList.add("hidden");
-        document.getElementById("review-payment-error")?.replaceChildren();
-        // Reset tombol "Lanjutkan ke Pembayaran" saat masuk ke layar (mis. kembali dari payment)
-        reviewToPaymentInProgress = false;
-        const reviewBtn = document.getElementById("btn-review-to-payment");
-        if (reviewBtn) {
-            reviewBtn.disabled = false;
-            reviewBtn.removeAttribute("aria-busy");
-            reviewBtn.textContent =
-                reviewBtn.dataset.defaultLabel ?? "Lanjutkan ke Pembayaran";
-        }
-    }
+    // ─────────────────────────────────────────────────────────
+    // STATE MACHINE
+    // ─────────────────────────────────────────────────────────
 
     const initialState = document.body.dataset.initialState || "IDLE";
     const stateMachine = createStateMachine(
@@ -194,6 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 initReviewOrderScreen();
             },
             PROMO_CODE: (state, prev) => {
+                // Kept for backward compat but no longer navigated to from review-order
                 const input = document.getElementById("promo-code-input");
                 const errEl = document.getElementById("promo-code-error");
                 if (errEl) {
@@ -209,7 +355,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     btn.disabled = false;
                     btn.textContent = btn.dataset.defaultLabel ?? "Terapkan";
                 }
-                promoApplyInProgress = false;
             },
             PAYMENT: (state, prev) => {
                 initPaymentCopySelector();
@@ -218,11 +363,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 const voucherError = document.getElementById(
                     "payment-voucher-error",
                 );
-                if (cards)
-                    cards.style.display = pricePerSession > 0 ? "" : "none";
-                if (freeWrap) {
-                    freeWrap.classList.toggle("hidden", pricePerSession > 0);
-                }
+                const subtotal = calcSubtotal();
+                if (cards) cards.style.display = subtotal > 0 ? "" : "none";
+                if (freeWrap) freeWrap.classList.toggle("hidden", subtotal > 0);
                 if (voucherError) {
                     voucherError.classList.add("hidden");
                     voucherError.textContent = "";
@@ -254,12 +397,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     );
                     mergedImageDataUrl = null;
 
-                    // ✅ Langsung merge otomatis tanpa tunggu klik
                     if (selectedFrameData && photos.length > 0) {
                         renderPreviewLayout(selectedFrameData.frame_file);
                     } else {
-                        console.log(selectedFrameData);
-                        console.log(photos.length);
                         const merged =
                             document.getElementById("preview-merged");
                         if (merged)
@@ -285,19 +425,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             },
             PRINT: (state, prev) => {
-                // PRINT state sekarang tidak digunakan langsung dari preview
-                // Flow langsung ke RESULT setelah upload dan print attempt
                 if (prev === "PREVIEW" && mergedImageDataUrl) {
-                    // Fallback: jika masih ada yang masuk ke PRINT state
                     doPrint();
                 }
             },
             RESULT: (state, prev) => {
-                // Panggil handleResultPage saat masuk RESULT (bisa dari PREVIEW atau PRINT)
                 handleResultPage();
             },
             DONE: () => {},
             RESET: (state, prev) => {
+                stopResultTimer();
                 camera?.stop();
                 camera = null;
                 mergedImageDataUrl = null;
@@ -309,19 +446,10 @@ document.addEventListener("DOMContentLoaded", () => {
         initialState,
     );
 
-    function getSelectedFrameId() {
-        const frameCard = document.querySelector(".frame-card.border-blue-600");
-        if (frameCard) return parseInt(frameCard.dataset.frameId, 10);
+    // ─────────────────────────────────────────────────────────
+    // CAPTURE SLOT OVERLAY
+    // ─────────────────────────────────────────────────────────
 
-        // Fallback: baca dari data attribute body (setelah redirect payment)
-        const fromBody = document.body.dataset.selectedFrameId;
-        return fromBody ? parseInt(fromBody, 10) : null;
-    }
-
-    /**
-     * Overlay gelap 50% di luar slot foto. Slot dari template di-scale to fit preview 4:3:
-     * memenuhi width atau height sambil jaga aspect ratio slot, lalu di-center.
-     */
     function applyCaptureSlotOverlay(frames, selectedFrameId) {
         const overlay = document.getElementById("capture-slot-overlay");
         const slotTop = document.getElementById("slot-top");
@@ -351,13 +479,11 @@ document.addEventListener("DOMContentLoaded", () => {
         let leftPct, topPct, widthPct, heightPct;
 
         if (slotAspect >= cameraAspect) {
-            // Slot lebih lebar/sama dengan 4:3 → penuh lebar, height dihitung, center vertikal
             widthPct = 100;
             heightPct = (slot.height / slot.width) * cameraAspect * 100;
             leftPct = 0;
             topPct = (100 - heightPct) / 2;
         } else {
-            // Slot lebih tinggi → penuh tinggi, width dihitung, center horizontal
             heightPct = 100;
             widthPct = (slot.width / slot.height / cameraAspect) * 100;
             topPct = 0;
@@ -379,12 +505,16 @@ document.addEventListener("DOMContentLoaded", () => {
         overlay.classList.remove("hidden");
     }
 
+    // ─────────────────────────────────────────────────────────
+    // FRAME SELECTION
+    // ─────────────────────────────────────────────────────────
+
     const frames = initFrames(stateMachine, session);
 
-    // Start → Pilih Frame (FRAME), lalu lanjut ke Tinjau Pesanan (REVIEW_ORDER)
     function goToFrame() {
         stateMachine.setState(stateMachine.STATES.FRAME);
     }
+
     const welcomeScreen = document.getElementById("screen-welcome");
     welcomeScreen?.addEventListener("click", (e) => {
         if (
@@ -406,34 +536,240 @@ document.addEventListener("DOMContentLoaded", () => {
         btnStartById.addEventListener("click", goToFrame);
     }
 
-    // Tinjau Pesanan: back → FRAME, quantity +/- , lanjut ke pembayaran, kode promo
+    // ─────────────────────────────────────────────────────────
+    // REVIEW ORDER — COPY COUNT
+    // ─────────────────────────────────────────────────────────
+
     document
         .getElementById("btn-review-back")
         ?.addEventListener("click", () => {
             stateMachine.setState(stateMachine.STATES.FRAME);
         });
+
     const { min: reviewMinCopy, max: reviewMaxCopy } =
         getReviewOrderCopyLimits();
+
     document
         .getElementById("review-copy-minus")
         ?.addEventListener("click", () => {
             if (selectedCopyCount <= reviewMinCopy) return;
             selectedCopyCount--;
+            if (appliedVoucherCode) recalcDiscount();
             updateReviewOrderDisplay();
         });
+
     document
         .getElementById("review-copy-plus")
         ?.addEventListener("click", () => {
             if (selectedCopyCount >= reviewMaxCopy) return;
             selectedCopyCount++;
+            if (appliedVoucherCode) recalcDiscount();
             updateReviewOrderDisplay();
         });
+
+    // ─────────────────────────────────────────────────────────
+    // REVIEW ORDER — INLINE PROMO
+    // ─────────────────────────────────────────────────────────
+
+    // Toggle tampilan section promo
+    document
+        .getElementById("btn-review-promo")
+        ?.addEventListener("click", () => {
+            const section = document.getElementById("review-promo-section");
+            const btn = document.getElementById("btn-review-promo");
+            if (!section) return;
+
+            const isHidden = section.classList.contains("hidden");
+            if (isHidden) {
+                section.classList.remove("hidden");
+                section.classList.add("flex");
+                if (btn) btn.textContent = "Tutup";
+                document.getElementById("review-promo-input")?.focus();
+            } else {
+                section.classList.add("hidden");
+                section.classList.remove("flex");
+                if (btn) btn.textContent = "Punya kode promo?";
+            }
+        });
+
+    // Enter key di input promo
+    document
+        .getElementById("review-promo-input")
+        ?.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                document.getElementById("btn-review-promo-apply")?.click();
+            }
+        });
+
+    // Input promo — hapus error saat ketik
+    document
+        .getElementById("review-promo-input")
+        ?.addEventListener("input", () => {
+            const errEl = document.getElementById("review-promo-error");
+            if (errEl) {
+                errEl.classList.add("hidden");
+                errEl.textContent = "";
+            }
+        });
+
+    // Apply voucher inline
+    document
+        .getElementById("btn-review-promo-apply")
+        ?.addEventListener("click", async () => {
+            if (promoApplyInProgress) return;
+
+            const input = document.getElementById("review-promo-input");
+            const errEl = document.getElementById("review-promo-error");
+            const applyBtn = document.getElementById("btn-review-promo-apply");
+            const code = input?.value?.trim();
+
+            if (!code) {
+                if (errEl) {
+                    errEl.textContent = "Masukkan kode promo terlebih dahulu";
+                    errEl.classList.remove("hidden");
+                }
+                return;
+            }
+            if (!validateVoucherUrl) return;
+
+            promoApplyInProgress = true;
+            if (applyBtn) {
+                applyBtn.disabled = true;
+                applyBtn.textContent = applyBtn.dataset.loadingLabel ?? "...";
+            }
+            if (errEl) {
+                errEl.classList.add("hidden");
+                errEl.textContent = "";
+            }
+
+            try {
+                // Validasi voucher ke backend
+                const validateRes = await fetch(validateVoucherUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": csrfToken,
+                        Accept: "application/json",
+                        "X-Requested-With": "XMLHttpRequest",
+                    },
+                    body: JSON.stringify({
+                        code,
+                        copy_count: selectedCopyCount,
+                    }),
+                });
+
+                const validateData = await validateRes.json().catch(() => ({}));
+
+                if (!validateRes.ok || !validateData.valid) {
+                    if (errEl) {
+                        errEl.textContent =
+                            validateData.message || "Voucher tidak valid";
+                        errEl.classList.remove("hidden");
+                    }
+                    if (applyBtn) {
+                        applyBtn.disabled = false;
+                        applyBtn.textContent =
+                            applyBtn.dataset.defaultLabel ?? "Pakai";
+                    }
+                    promoApplyInProgress = false;
+                    return;
+                }
+
+                const discountAmt = validateData.discount_amount ?? 0;
+                const amountAfterDiscount =
+                    validateData.amount_after_discount ?? 0;
+
+                // Jika 100% diskon → langsung apply voucher dan lanjut ke CAPTURE
+                if (amountAfterDiscount <= 0) {
+                    const applyRes = await fetch(applyVoucherUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRF-TOKEN": csrfToken,
+                            Accept: "application/json",
+                            "X-Requested-With": "XMLHttpRequest",
+                        },
+                        body: JSON.stringify({
+                            code,
+                            copy_count: selectedCopyCount,
+                        }),
+                    });
+                    const applyData = await applyRes.json().catch(() => ({}));
+
+                    if (applyRes.ok && applyData.success) {
+                        stateMachine.setState(stateMachine.STATES.CAPTURE);
+                    } else {
+                        if (errEl) {
+                            errEl.textContent =
+                                applyData.message || "Gagal menerapkan voucher";
+                            errEl.classList.remove("hidden");
+                        }
+                        if (applyBtn) {
+                            applyBtn.disabled = false;
+                            applyBtn.textContent =
+                                applyBtn.dataset.defaultLabel ?? "Pakai";
+                        }
+                    }
+                    promoApplyInProgress = false;
+                    return;
+                }
+
+                // Diskon parsial → simpan state dan perbarui tampilan
+                appliedVoucherCode = code;
+                appliedDiscountAmount = discountAmt;
+                appliedVoucherType = validateData.voucher_type ?? "fixed";
+                appliedVoucherValue = validateData.voucher_value ?? discountAmt;
+
+                _showPromoSuccess(code, discountAmt);
+                updateReviewOrderDisplay();
+
+                // Tutup section & sembunyikan tombol promo (voucher sudah aktif)
+                const section = document.getElementById("review-promo-section");
+                const promoToggleBtn =
+                    document.getElementById("btn-review-promo");
+                if (section) {
+                    section.classList.add("hidden");
+                    section.classList.remove("flex");
+                }
+                if (promoToggleBtn) promoToggleBtn.classList.add("hidden");
+            } catch (err) {
+                console.error("Promo apply error:", err);
+                if (errEl) {
+                    errEl.textContent = "Gagal memproses. Coba lagi.";
+                    errEl.classList.remove("hidden");
+                }
+                if (applyBtn) {
+                    applyBtn.disabled = false;
+                    applyBtn.textContent =
+                        applyBtn.dataset.defaultLabel ?? "Pakai";
+                }
+            } finally {
+                promoApplyInProgress = false;
+            }
+        });
+
+    // Hapus voucher yang sudah diterapkan
+    document
+        .getElementById("btn-review-promo-remove")
+        ?.addEventListener("click", () => {
+            appliedVoucherCode = null;
+            appliedDiscountAmount = 0;
+            _resetPromoUI();
+            updateReviewOrderDisplay();
+        });
+
+    // ─────────────────────────────────────────────────────────
+    // REVIEW ORDER — LANJUT KE PEMBAYARAN
+    // ─────────────────────────────────────────────────────────
+
     let reviewToPaymentInProgress = false;
+
     document
         .getElementById("btn-review-to-payment")
         ?.addEventListener("click", async () => {
             if (reviewToPaymentInProgress) return;
             reviewToPaymentInProgress = true;
+
             const btn = document.getElementById("btn-review-to-payment");
             const defaultLabel =
                 btn?.dataset.defaultLabel ?? "Lanjutkan ke Pembayaran";
@@ -443,6 +779,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 btn.setAttribute("aria-busy", "true");
                 btn.textContent = loadingLabel;
             }
+
             function resetButton() {
                 reviewToPaymentInProgress = false;
                 if (btn) {
@@ -451,11 +788,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     btn.textContent = defaultLabel;
                 }
             }
-            const slotCount = selectedFrameData?.photo_slots?.length ?? 1;
-            const basePrice = pricePerSlot[slotCount] ?? pricePerSlot[1] ?? 0;
-            const price =
-                basePrice +
-                copyPricePerUnit * Math.max(0, selectedCopyCount - 1);
+
+            const subtotal = calcSubtotal();
+            const discountAmt = appliedDiscountAmount || 0;
+            const totalToPay = Math.max(0, subtotal - discountAmt);
+
             const reviewErrorEl = document.getElementById(
                 "review-payment-error",
             );
@@ -473,8 +810,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
             hideReviewError();
+
             try {
-                if (price > 0) {
+                // Kasus: voucher parsial sudah diterapkan, total > 0 → createPayment dengan voucher_code
+                if (appliedVoucherCode && totalToPay > 0) {
                     if (!createPaymentUrl) {
                         resetButton();
                         return;
@@ -487,38 +826,32 @@ document.addEventListener("DOMContentLoaded", () => {
                             Accept: "application/json",
                             "X-Requested-With": "XMLHttpRequest",
                         },
-                        body: JSON.stringify({ copy_count: selectedCopyCount }),
+                        body: JSON.stringify({
+                            copy_count: selectedCopyCount,
+                            voucher_code: appliedVoucherCode,
+                        }),
                     });
                     const data = await res.json().catch(() => ({}));
-                    if (data.snap_token) {
-                        console.error(
-                            "Backend returned snap_token; deploy latest (Core API only).",
-                        );
-                        showReviewError(
-                            "Backend masih mengembalikan Snap. Pastikan deploy terbaru.",
-                        );
-                        resetButton();
-                        return;
-                    }
-                    const redirectUrl = data.redirect_url;
-                    if (!redirectUrl) {
-                        const msg =
-                            data.message ||
-                            (res.ok ? "" : `Error ${res.status}`);
-                        console.error("No redirect_url", msg);
-                        showReviewError(
-                            msg || "Tidak ada redirect. Coba mulai sesi baru.",
-                        );
-                        resetButton();
-                        return;
-                    }
                     if (!res.ok) {
                         showReviewError(data.message || `Error ${res.status}`);
                         resetButton();
                         return;
                     }
+                    const redirectUrl = data.redirect_url;
+                    if (!redirectUrl) {
+                        showReviewError(
+                            data.message ||
+                                "Tidak ada redirect. Coba mulai sesi baru.",
+                        );
+                        resetButton();
+                        return;
+                    }
                     window.location.href = redirectUrl;
-                } else {
+                    return;
+                }
+
+                // Kasus: gratis (subtotal 0 atau voucher 100% sudah di-apply sebelumnya via button)
+                if (totalToPay <= 0) {
                     if (!confirmFreeUrl) {
                         resetButton();
                         return;
@@ -539,7 +872,47 @@ document.addEventListener("DOMContentLoaded", () => {
                     } else {
                         resetButton();
                     }
+                    return;
                 }
+
+                // Kasus: berbayar tanpa voucher
+                if (!createPaymentUrl) {
+                    resetButton();
+                    return;
+                }
+                const res = await fetch(createPaymentUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": csrfToken,
+                        Accept: "application/json",
+                        "X-Requested-With": "XMLHttpRequest",
+                    },
+                    body: JSON.stringify({ copy_count: selectedCopyCount }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (data.snap_token) {
+                    showReviewError(
+                        "Backend masih mengembalikan Snap. Pastikan deploy terbaru.",
+                    );
+                    resetButton();
+                    return;
+                }
+                const redirectUrl = data.redirect_url;
+                if (!redirectUrl) {
+                    showReviewError(
+                        data.message ||
+                            "Tidak ada redirect. Coba mulai sesi baru.",
+                    );
+                    resetButton();
+                    return;
+                }
+                if (!res.ok) {
+                    showReviewError(data.message || `Error ${res.status}`);
+                    resetButton();
+                    return;
+                }
+                window.location.href = redirectUrl;
             } catch (err) {
                 console.error("Payment error", err);
                 showReviewError(
@@ -549,171 +922,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 resetButton();
             }
         });
-    document
-        .getElementById("btn-review-promo")
-        ?.addEventListener("click", () => {
-            stateMachine.setState(stateMachine.STATES.PROMO_CODE);
-        });
 
-    // Promo code screen: Batal → REVIEW_ORDER; Terapkan → validate → 100% apply-voucher+FRAME, <100% createPayment (Core API) + redirect
+    // ─────────────────────────────────────────────────────────
+    // PROMO CODE SCREEN (legacy — tidak dipakai dari review-order)
+    // ─────────────────────────────────────────────────────────
+
     document
         .getElementById("btn-promo-cancel")
         ?.addEventListener("click", () => {
             stateMachine.setState(stateMachine.STATES.REVIEW_ORDER);
         });
-    let promoApplyInProgress = false;
-    document
-        .getElementById("btn-promo-apply")
-        ?.addEventListener("click", async () => {
-            if (promoApplyInProgress) return;
-            const input = document.getElementById("promo-code-input");
-            const errEl = document.getElementById("promo-code-error");
-            const btn = document.getElementById("btn-promo-apply");
-            const code = input?.value?.trim();
-            if (!code) {
-                if (errEl) {
-                    errEl.textContent = "Masukkan kode promo";
-                    errEl.classList.remove("hidden");
-                }
-                return;
-            }
-            if (!validateVoucherUrl) return;
-            promoApplyInProgress = true;
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = btn.dataset.loadingLabel ?? "Memproses...";
-            }
-            if (errEl) {
-                errEl.classList.add("hidden");
-                errEl.textContent = "";
-            }
-            try {
-                const validateRes = await fetch(validateVoucherUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": csrfToken,
-                        Accept: "application/json",
-                        "X-Requested-With": "XMLHttpRequest",
-                    },
-                    body: JSON.stringify({
-                        code,
-                        copy_count: selectedCopyCount,
-                    }),
-                });
-                const validateData = await validateRes.json().catch(() => ({}));
-                if (!validateRes.ok || !validateData.valid) {
-                    if (errEl) {
-                        errEl.textContent =
-                            validateData.message || "Voucher tidak valid";
-                        errEl.classList.remove("hidden");
-                    }
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.textContent =
-                            btn.dataset.defaultLabel ?? "Terapkan";
-                    }
-                    promoApplyInProgress = false;
-                    return;
-                }
-                const amountAfterDiscount =
-                    validateData.amount_after_discount ?? 0;
-                if (amountAfterDiscount <= 0) {
-                    const applyRes = await fetch(applyVoucherUrl, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRF-TOKEN": csrfToken,
-                            Accept: "application/json",
-                            "X-Requested-With": "XMLHttpRequest",
-                        },
-                        body: JSON.stringify({
-                            code,
-                            copy_count: selectedCopyCount,
-                        }),
-                    });
-                    const applyData = await applyRes.json().catch(() => ({}));
-                    if (applyRes.ok && applyData.success) {
-                        stateMachine.setState(stateMachine.STATES.CAPTURE);
-                    } else {
-                        if (errEl) {
-                            errEl.textContent =
-                                applyData.message || "Gagal menerapkan voucher";
-                            errEl.classList.remove("hidden");
-                        }
-                        if (btn) {
-                            btn.disabled = false;
-                            btn.textContent =
-                                btn.dataset.defaultLabel ?? "Terapkan";
-                        }
-                    }
-                    promoApplyInProgress = false;
-                    return;
-                }
-                const payRes = await fetch(createPaymentUrl, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": csrfToken,
-                        Accept: "application/json",
-                        "X-Requested-With": "XMLHttpRequest",
-                    },
-                    body: JSON.stringify({
-                        copy_count: selectedCopyCount,
-                        voucher_code: code,
-                    }),
-                });
-                const payData = await payRes.json().catch(() => ({}));
-                if (payData.snap_token) {
-                    console.error(
-                        "Backend returned snap_token; deploy latest (Core API only).",
-                    );
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.textContent =
-                            btn.dataset.defaultLabel ?? "Terapkan";
-                    }
-                    promoApplyInProgress = false;
-                    return;
-                }
-                const redirectUrl = payData.redirect_url;
-                if (!redirectUrl) {
-                    if (errEl) {
-                        errEl.textContent =
-                            payData.message || "Gagal membuat pembayaran";
-                        errEl.classList.remove("hidden");
-                    }
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.textContent =
-                            btn.dataset.defaultLabel ?? "Terapkan";
-                    }
-                    promoApplyInProgress = false;
-                    return;
-                }
-                window.location.href = redirectUrl;
-            } catch (err) {
-                console.error("Promo apply error", err);
-                if (errEl) {
-                    errEl.textContent = "Gagal memproses. Coba lagi.";
-                    errEl.classList.remove("hidden");
-                }
-                if (btn) {
-                    btn.disabled = false;
-                    btn.textContent = btn.dataset.defaultLabel ?? "Terapkan";
-                }
-                promoApplyInProgress = false;
-            }
-        });
-    document
-        .getElementById("promo-code-input")
-        ?.addEventListener("input", () => {
-            const errEl = document.getElementById("promo-code-error");
-            if (errEl) {
-                errEl.classList.add("hidden");
-                errEl.textContent = "";
-            }
-        });
+
+    // ─────────────────────────────────────────────────────────
+    // PAYMENT SCREEN
+    // ─────────────────────────────────────────────────────────
 
     document
         .getElementById("btn-payment-back")
@@ -820,15 +1042,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 const data = await res.json().catch(() => ({}));
                 if (data.snap_token) {
-                    console.error(
-                        "Backend returned snap_token; deploy latest (Core API only).",
-                    );
                     if (btn) btn.disabled = false;
                     return;
                 }
                 const redirectUrl = data.redirect_url;
                 if (!redirectUrl) {
-                    console.error("No redirect_url", data.message);
                     if (btn) btn.disabled = false;
                     return;
                 }
@@ -838,6 +1056,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (btn) btn.disabled = false;
             }
         });
+
+    // ─────────────────────────────────────────────────────────
+    // CAPTURE SCREEN
+    // ─────────────────────────────────────────────────────────
 
     document
         .getElementById("btn-capture-back")
@@ -855,9 +1077,12 @@ document.addEventListener("DOMContentLoaded", () => {
             stateMachine.setState(stateMachine.STATES.PREVIEW);
         });
 
+    // ─────────────────────────────────────────────────────────
+    // PREVIEW SCREEN
+    // ─────────────────────────────────────────────────────────
+
     function renderPreviewPhotos(photos) {
         const grid = document.getElementById("preview-photo-grid");
-        const merged = document.getElementById("preview-merged");
         if (!grid) return;
         grid.innerHTML = "";
         photos.forEach((dataUrl, i) => {
@@ -876,7 +1101,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     b.classList.remove("border-gray-900"),
                 );
                 btn.classList.add("border-gray-900");
-                // Merge hanya saat foto diklik
                 if (selectedFrameData && photos[i]) {
                     renderPreviewLayout(selectedFrameData.frame_file);
                 }
@@ -885,10 +1109,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    /**
-     * Tampilkan preview: merge template + foto via canvas. Foto di dalam photo slots.
-     * Mirror checkbox mengubah tampilan (re-merge). Merge final saat klik "Lanjut ke Print".
-     */
     async function renderPreviewLayout(frameUrl) {
         const merged = document.getElementById("preview-merged");
         if (!merged) return;
@@ -898,17 +1118,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const slots = selectedFrameData?.photo_slots ?? [];
             const templateWidth = selectedFrameData?.template_width || 945;
             const templateHeight = selectedFrameData?.template_height;
-
-            // Cek Nilai Copies
-            const copies = selectedCopyCount;
-            const copies2 = setting.copies;
-
-            console.log("Selected Copies:", copies);
-            console.log("Setting Copies:", copies2);
-
-            // Cek nilai photo_layer
-            console.log("Photo Layer:", selectedFrameData);
-
             const mirrorChecked =
                 document.getElementById("preview-mirror")?.checked ?? false;
             const photoSlots = slots.map((s) => ({
@@ -966,9 +1175,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-    /**
-     * Merge foto + template ke canvas (dipanggil saat klik Lanjut ke Print).
-     */
     async function mergeForPrint(frameUrl) {
         const photos = camera?.getPhotos() || [];
         const slots = selectedFrameData?.photo_slots ?? [];
@@ -994,7 +1200,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function uploadMediaOnce() {
-        if (isUploaded) return; // guard: skip jika sudah diupload
+        if (isUploaded) return;
         const photos = camera?.getPhotos() || [];
         try {
             if (mergedImageDataUrl) {
@@ -1003,7 +1209,7 @@ document.addEventListener("DOMContentLoaded", () => {
             for (let i = 0; i < photos.length; i++) {
                 await session.saveMedia("image", photos[i], i + 1);
             }
-            isUploaded = true; // tandai sudah diupload
+            isUploaded = true;
         } catch (err) {
             console.error("Upload error:", err);
             throw err;
@@ -1028,6 +1234,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 printBtn.disabled = true;
                 printBtn.textContent = "Memproses...";
             }
+
             try {
                 mergedImageDataUrl = await mergeForPrint(
                     selectedFrameData.frame_file,
@@ -1042,39 +1249,32 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             if (printBtn) printBtn.textContent = "Lanjut ke Print";
 
-            // Upload foto ke database
             try {
                 await uploadMediaOnce();
             } catch (err) {
                 console.error("Save media error:", err);
-                // Tetap lanjutkan meskipun ada error upload
             }
 
-            // Coba print ke receipt printer (non-blocking, tidak menghalangi flow)
             const copies = selectedCopyCount || setting.copies || 1;
             if (isPrinterConnected()) {
                 try {
                     await printPhotostrip(mergedImageDataUrl, copies);
-                    console.log(`Printed ${copies} copy/copies successfully`);
                 } catch (e) {
                     console.warn("Print failed:", e);
-                    // Tidak menghalangi flow meskipun print gagal
                 }
             } else {
                 console.warn("Printer tidak terhubung, skip printing");
-                // Tidak menghalangi flow meskipun printer tidak terhubung
             }
 
-            // Langsung ke RESULT state untuk menampilkan QR code
             stateMachine.setState(stateMachine.STATES.RESULT);
         });
 
-    async function doPrint() {
-        const status = document.getElementById("print-status");
-        const done = document.getElementById("print-done");
-        if (!mergedImageDataUrl) return;
+    // ─────────────────────────────────────────────────────────
+    // PRINT SCREEN
+    // ─────────────────────────────────────────────────────────
 
-        const photos = camera?.getPhotos() || [];
+    async function doPrint() {
+        if (!mergedImageDataUrl) return;
         try {
             await uploadMediaOnce();
         } catch (err) {
@@ -1085,11 +1285,10 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const printWindow = window.open("", "_blank");
             if (printWindow) {
-                printWindow.document.write(`
-          <!DOCTYPE html><html><head><title>Print</title>
+                printWindow.document
+                    .write(`<!DOCTYPE html><html><head><title>Print</title>
           <style>@page{size:8cm 11cm;margin:0}body{margin:0}img{width:8cm;height:11cm;object-fit:contain}</style>
-          </head><body><img src="${mergedImageDataUrl}" alt="Photostrip"></body></html>
-        `);
+          </head><body><img src="${mergedImageDataUrl}" alt="Photostrip"></body></html>`);
                 printWindow.document.close();
                 printWindow.onload = () => {
                     printWindow.print();
@@ -1100,13 +1299,72 @@ document.addEventListener("DOMContentLoaded", () => {
             console.warn("Print failed:", e);
         }
 
-        status?.classList.add("hidden");
-        done?.classList.remove("hidden");
+        document.getElementById("print-status")?.classList.add("hidden");
+        document.getElementById("print-done")?.classList.remove("hidden");
     }
 
     document.getElementById("btn-print-next")?.addEventListener("click", () => {
         stateMachine.setState(stateMachine.STATES.RESULT);
     });
+
+    // ─────────────────────────────────────────────────────────
+    // RESULT SCREEN
+    // ─────────────────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────────────────
+    // RESULT TIMER
+    // ─────────────────────────────────────────────────────────
+
+    function stopResultTimer() {
+        if (_resultTimerInterval) {
+            clearInterval(_resultTimerInterval);
+            _resultTimerInterval = null;
+        }
+    }
+
+    function startResultTimer(seconds, onExpire) {
+        stopResultTimer();
+
+        const countEl = document.getElementById("result-timer-count");
+        const barEl = document.getElementById("result-timer-bar");
+
+        let remaining = seconds;
+
+        // Set initial state
+        if (countEl) countEl.textContent = remaining;
+        if (barEl) {
+            // Matikan transition dulu agar reset instan
+            barEl.style.transition = "none";
+            barEl.style.width = "100%";
+            // Paksa reflow lalu aktifkan transition
+            void barEl.offsetWidth;
+            barEl.style.transition = "width 1s linear";
+        }
+
+        _resultTimerInterval = setInterval(() => {
+            remaining -= 1;
+
+            if (countEl) countEl.textContent = remaining;
+            if (barEl) {
+                const pct = Math.max(0, (remaining / seconds) * 100);
+                barEl.style.width = pct + "%";
+
+                // Ganti warna bar saat mendekati habis
+                if (remaining <= 10) {
+                    barEl.style.background = "var(--danger)";
+                } else if (remaining <= 20) {
+                    barEl.style.background = "#f97316"; // oranye
+                } else {
+                    barEl.style.background = "var(--primary)";
+                }
+            }
+
+            if (remaining <= 0) {
+                stopResultTimer();
+                onExpire();
+            }
+        }, 1000);
+    }
 
     async function handleResultPage() {
         const uploadStatus = document.getElementById("result-upload-status");
@@ -1118,7 +1376,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!uploadStatus || !qrSection) return;
 
-        // Pastikan foto sudah di-upload (jika belum di-upload di button click)
         const photos = camera?.getPhotos() || [];
         try {
             await uploadMediaOnce();
@@ -1132,25 +1389,20 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Generate QR code menggunakan resultUrl dari data attribute atau fallback
         const sessionId = document.body.dataset.sessionId;
         const finalResultUrl =
             resultUrl || `${window.location.origin}/booth/result/${sessionId}`;
 
         uploadStatus.classList.add("hidden");
         qrSection.classList.remove("hidden");
-        if (resultActions) {
-            resultActions.classList.remove("hidden");
-        }
+        if (resultActions) resultActions.classList.remove("hidden");
 
-        // Sesi selesai setelah QR muncul
         try {
             await session.updateSession({ status: "completed" });
         } catch (err) {
             console.warn("Gagal update status session:", err);
         }
 
-        // Generate QR code menggunakan library atau API
         if (qrContainer) {
             qrContainer.innerHTML = "";
             const qrImg = document.createElement("img");
@@ -1160,14 +1412,10 @@ document.addEventListener("DOMContentLoaded", () => {
             qrContainer.appendChild(qrImg);
         }
 
-        if (resultUrlEl) {
-            resultUrlEl.textContent = finalResultUrl;
-        }
-    }
+        if (resultUrlEl) resultUrlEl.textContent = finalResultUrl;
 
-    document
-        .getElementById("btn-result-home")
-        ?.addEventListener("click", () => {
+        // Mulai timer — redirect ke welcome saat habis
+        startResultTimer(RESULT_TIMEOUT_SECONDS, () => {
             const projectId = document.body.dataset.projectId;
             if (projectId) {
                 window.location.href = `/booth/${projectId}`;
@@ -1175,6 +1423,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 stateMachine.setState(stateMachine.STATES.RESET);
             }
         });
+    }
+
+    document
+        .getElementById("btn-result-home")
+        ?.addEventListener("click", () => {
+            stopResultTimer();
+            const projectId = document.body.dataset.projectId;
+            if (projectId) {
+                window.location.href = `/booth/${projectId}`;
+            } else {
+                stateMachine.setState(stateMachine.STATES.RESET);
+            }
+        });
+
+    // ─────────────────────────────────────────────────────────
+    // QR / DONE SCREEN
+    // ─────────────────────────────────────────────────────────
 
     stateMachine.subscribe((state) => {
         if (state === stateMachine.STATES.DONE && resultUrl) {
@@ -1198,7 +1463,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Lock / Fullscreen button (manual only – no auto fullscreen on page load)
+    // ─────────────────────────────────────────────────────────
+    // FULLSCREEN & CAMERA SETTINGS
+    // ─────────────────────────────────────────────────────────
+
     document
         .getElementById("btn-lock-fullscreen")
         ?.addEventListener("click", () => {
@@ -1218,8 +1486,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-    // Initialize camera settings modal
     initCameraSettings();
-
     stateMachine.setState(initialState);
 });

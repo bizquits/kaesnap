@@ -145,6 +145,9 @@ class BoothSessionController extends Controller
             'total_before' => $totalBefore,
             'discount_amount' => $discountAmount,
             'amount_after_discount' => $amountAfterDiscount,
+            'voucher_type' => $voucher->type,
+            'voucher_value' => (int) $voucher->value,
+
         ]);
     }
 
