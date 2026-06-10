@@ -24,7 +24,7 @@ class ListFrames extends ListRecords
 
     // ── Modal state ──────────────────────────────────────────────────────────
     public string $modalFrameName       = '';
-    public string $modalFrameSize       = '1200x1800';
+    public string $modalFrameSize       = '945x1299';
     public $modalFrameOverlay           = null;
     public bool   $showCreateModal      = false;
     public string $modalValidationError = '';
@@ -56,7 +56,7 @@ class ListFrames extends ListRecords
     public function openModal(): void
     {
         $this->modalFrameName       = '';
-        $this->modalFrameSize       = '1200x1800';
+        $this->modalFrameSize       = '945x1299';
         $this->modalFrameOverlay    = null;
         $this->modalValidationError = '';
         $this->showCreateModal      = true;

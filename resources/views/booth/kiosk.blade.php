@@ -4,7 +4,7 @@
 <head>
     <title>{{ $project->name }} – Booth</title>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1 maximum-scale=1, user-scalable=no">
     <meta name="theme-color" content="#000000">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @php
@@ -44,7 +44,10 @@
     data-setting="{{ json_encode(['copies' => $setting->copies ?? 1, 'max_retakes' => $setting->max_retakes ?? 3, 'countdown_seconds' => $setting->countdown_seconds ?? 3]) }}"
     data-copy-price-options="{{ $setting->copy_prices ?? 0 }}"
     data-selected-frame-id="{{ $selectedFrameId ?? '' }}"
-    data-selected-copy-count="{{ $selectedCopyCount ?? 1 }}">
+    data-selected-copy-count="{{ $selectedCopyCount ?? 1 }}"
+    data-qris-image-url="{{ route('booth.session.qris-image', $session) }}"
+    data-payment-status-url="{{ route('booth.session.payment-status', $session) }}"
+    data-is-sandbox="{{ config('midtrans.is_production') ? 'false' : 'true' }}">
 
     {{-- Welcome Screen (IDLE state) - rendered with components from database --}}
     @include('booth.screens.welcome', ['welcomeComponents' => $welcomeComponents])
@@ -55,10 +58,6 @@
 
     <div id="screen-promo-code" class="booth-screen hidden" data-state="PROMO_CODE">
         @include('booth.screens.promo-code')
-    </div>
-
-    <div id="screen-payment" class="booth-screen booth-screen-white hidden" data-state="PAYMENT">
-        @include('booth.screens.payment')
     </div>
 
     <div id="screen-frame" class="booth-screen booth-screen-white hidden" data-state="FRAME">
@@ -87,6 +86,9 @@
 
     {{-- Camera Settings Modal --}}
     @include('booth.components.camera-settings-modal')
+
+    {{-- QRIS Payment Modal --}}
+    @include('booth.components.payment-qris-modal')
 
 </body>
 

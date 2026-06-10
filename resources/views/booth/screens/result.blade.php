@@ -1,68 +1,78 @@
+{{-- NOTE: Save to result.blade.php --}}
 <div class="kiosk-screen kiosk-screen--with-header flex h-full w-full flex-col" data-state="RESULT">
-    @include('booth.components.screen-header', ['title' => 'Foto Siap!'])
+    @include('booth.components.screen-header', ['title' => 'MISSION COMPLETE'])
 
     <div class="kiosk-screen-body flex-1 overflow-y-auto p-5">
         <div class="mx-auto flex max-w-md flex-col items-center gap-6 text-center animate-fade-up">
 
             {{-- Upload status --}}
             <div id="result-upload-status" class="w-full">
-                <div class="flex flex-col items-center gap-3">
-                    <svg class="h-6 w-6 animate-spin" style="color:var(--text-muted);" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
-                        <path class="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <p class="text-sm" style="color:var(--text-muted);">Mengupload foto...</p>
+                <div class="flex flex-col items-center gap-3 py-8">
+                    <div class="arcade-loading" style="justify-content:center;">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <p style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.75rem;
+                               letter-spacing:0.15em;text-transform:uppercase;color:var(--text-muted);">
+                        UPLOADING...
+                    </p>
                 </div>
             </div>
 
             {{-- QR section --}}
-            <div id="result-qr-section" class="hidden w-full flex-col items-center gap-4">
+            <div id="result-qr-section" class="hidden w-full flex-col items-center gap-5">
 
                 {{-- Timer bar --}}
-                <div id="result-timer-wrap" class="w-full flex flex-col items-center gap-2 mb-10">
-                    <p class="text-xs" style="color:var(--text-muted);">
-                        Sesi berakhir dalam
+                <div id="result-timer-wrap" class="w-full flex flex-col items-center gap-2">
+                    <p style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.7rem;
+                               letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);">
+                        SESSION ENDS IN
                         <span id="result-timer-count"
-                            class="font-semibold tabular-nums"
-                            style="color:var(--text);">60</span>s
+                            style="font-family:'Orbitron',monospace;color:var(--cyan);
+                                   text-shadow:0 0 8px var(--cyan-glow);">60</span>s
                     </p>
-                    <div class="w-full overflow-hidden rounded-full" style="height:4px; background:var(--border);">
-                        <div id="result-timer-bar"
-                            class="h-full rounded-full"
-                            style="width:100%; background:var(--primary); transition:width 1s linear; transform-origin:left;"></div>
+                    <div class="arcade-progress-bar" style="--progress:100%;">
+                        <div id="result-timer-bar"></div>
                     </div>
                 </div>
 
-                <p class="text-sm" style="color:var(--text-muted);">Scan QR untuk mengunduh foto Anda</p>
+                <p style="font-family:'Rajdhani',sans-serif;font-weight:600;font-size:0.85rem;
+                           letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);">
+                    SCAN QR TO DOWNLOAD
+                </p>
 
-                <div id="result-qr-code"
-                    class="rounded-2xl p-5"
-                    style="background:#fff; display:inline-block;"></div>
+                <div id="result-qr-code" style="display:inline-block;"></div>
 
-                <div class="text-xs" style="color:var(--text-dim);">
-                    <p>Atau kunjungi:</p>
+                <div style="font-family:'Rajdhani',sans-serif;font-size:0.75rem;
+                             letter-spacing:0.06em;color:var(--text-dim);">
+                    <p style="text-transform:uppercase;margin:0 0 0.25rem;">OR VISIT</p>
                     <p id="result-url"
-                        class="mt-1 break-all font-mono"
-                        style="color:var(--text-muted);"></p>
+                        style="font-family:'Orbitron',monospace;font-size:0.65rem;
+                               color:var(--blue);text-shadow:0 0 6px var(--blue-glow);
+                               word-break:break-all;margin:0;"></p>
                 </div>
             </div>
 
             {{-- Error --}}
-            <div id="result-error"
-                class="hidden w-full rounded-xl px-4 py-3 text-sm"
-                style="background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.2); color:var(--danger);">
-                Gagal mengupload foto. Silakan coba lagi.
+            <div id="result-error" class="hidden w-full px-4 py-3"
+                style="background:rgba(255,62,108,0.08);border:1px solid rgba(255,62,108,0.25);
+                       border-radius:var(--radius-sm);color:var(--danger);
+                       font-family:'Rajdhani',sans-serif;font-weight:700;
+                       font-size:0.8rem;letter-spacing:0.08em;text-transform:uppercase;">
+                UPLOAD FAILED. TRY AGAIN.
             </div>
 
             {{-- Actions --}}
             <div id="result-actions" class="hidden w-full">
                 <button type="button" id="btn-result-home"
-                    class="w-full py-3.5 text-sm font-medium transition-opacity hover:opacity-70"
-                    style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-muted);">
-                    Kembali ke Home
+                    class="w-full py-3.5"
+                    style="background:var(--bg-card);border:1px solid var(--border-md);
+                           border-radius:var(--radius-sm);color:var(--text-muted);
+                           font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.8rem;
+                           letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;
+                           transition:all 0.15s ease;">
+                    ← BACK TO HOME
                 </button>
             </div>
-
         </div>
     </div>
 </div>

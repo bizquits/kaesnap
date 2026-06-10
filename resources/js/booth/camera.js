@@ -163,6 +163,8 @@ export function createCamera(session, options = {}) {
     let exposureMax = 2;
     let exposureSupported = false;
     const maxPhotos = parseInt(options.maxPhotos, 10) || 1;
+    const maxRetakes = parseInt(options.maxRetakes, 10) || 3;
+    let retakeCounts = {};
     const countdownDelay = Math.min(
         10,
         Math.max(1, parseInt(options.countdownSeconds, 10) || 3),
@@ -345,6 +347,8 @@ export function createCamera(session, options = {}) {
             retake.innerHTML =
                 '<svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>';
             retake.onclick = () => retakePhoto(i);
+            if ((retakeCounts[i] || 0) >= maxRetakes)
+                retake.style.display = "none";
             div.appendChild(retake);
             capturePhotos.appendChild(div);
         });
@@ -375,6 +379,8 @@ export function createCamera(session, options = {}) {
 
     function retakePhoto(index) {
         if (isCapturing) return;
+        retakeCounts[index] = (retakeCounts[index] || 0) + 1;
+        if (retakeCounts[index] > maxRetakes) return;
         isCapturing = true;
         doCountdown(() => {
             playCaptureBeep(); // ← beep capture

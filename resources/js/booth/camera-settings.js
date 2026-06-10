@@ -12,6 +12,7 @@ import {
     isPrinterConnected,
     isWebUSBAvailable,
     isWebBluetoothAvailable,
+    autoReconnectBLE,
 } from "./printer.js";
 
 const STORAGE_KEY = "photobooth_selectedCameraId";
@@ -476,6 +477,15 @@ async function handleConnectPrinter() {
 // ===========================
 
 export function initCameraSettings() {
+    // Auto-reconnect USB saat halaman load
+    navigator.usb?.getDevices().then((devices) => {
+        if (devices.length > 0)
+            connectPrinterUSB(devices[0].vendorId).catch(() => {});
+    });
+
+    autoReconnectBLE().then((reconnected) => {
+        if (reconnected) console.log("[Printer] BLE tersambung otomatis");
+    });
     const modal = getModalEl();
 
     // ── Open ──

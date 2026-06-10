@@ -10,10 +10,10 @@ return new class extends Migration
     {
         Schema::table('frames', function (Blueprint $table) {
             if (!Schema::hasColumn('frames', 'canvas_width')) {
-                $table->unsignedInteger('canvas_width')->default(1200)->after('is_active');
+                $table->unsignedInteger('canvas_width')->default(945)->after('is_active');
             }
             if (!Schema::hasColumn('frames', 'canvas_height')) {
-                $table->unsignedInteger('canvas_height')->default(1800)->after('canvas_width');
+                $table->unsignedInteger('canvas_height')->default(1299)->after('canvas_width');
             }
             // 'behind' = foto di belakang overlay, 'front' = foto di depan overlay
             if (!Schema::hasColumn('frames', 'photo_layer')) {

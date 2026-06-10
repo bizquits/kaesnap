@@ -284,6 +284,7 @@ class BoothSessionController extends Controller
             'redirect_url' => $redirectUrl,
             'order_id' => $orderId,
             'amount' => $amount,
+            'qr_code_url'  => $qrCodeUrl,
         ]);
     }
 

@@ -382,6 +382,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     camera = createCamera(session, {
                         countdownSeconds,
                         maxPhotos,
+                        maxRetakes: setting.max_retakes ?? 3,
                     });
                     camera?.reset();
                     applyCaptureSlotOverlay(framesData, getSelectedFrameId());
@@ -759,6 +760,161 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
     // ─────────────────────────────────────────────────────────
+    // PAYMENT QRIS MODAL
+    // ─────────────────────────────────────────────────────────
+
+    const qrisImageBaseUrl = document.body.dataset.qrisImageUrl || "";
+    const paymentStatusBaseUrl = document.body.dataset.paymentStatusUrl || "";
+    const isSandbox = document.body.dataset.isSandbox === "true";
+
+    let _paymentPollTimer = null;
+    let _currentOrderId = null;
+
+    function stopPaymentPoll() {
+        if (_paymentPollTimer) {
+            clearInterval(_paymentPollTimer);
+            _paymentPollTimer = null;
+        }
+    }
+
+    function openPaymentModal(orderId, amount, qrCodeUrl = null) {
+        _currentOrderId = orderId;
+
+        const modal = document.getElementById("payment-qris-modal");
+        const amountEl = document.getElementById("payment-modal-amount");
+        const statusEl = document.getElementById("payment-modal-status");
+        const dotEl = document.getElementById("payment-modal-status-dot");
+        const qrImg = document.getElementById("payment-modal-qr-img");
+        const qrLoading = document.getElementById("payment-modal-qr-loading");
+        const sandboxSec = document.getElementById("payment-modal-sandbox");
+        const sandboxUrl = document.getElementById("payment-modal-sandbox-url");
+
+        // Reset UI
+        if (amountEl)
+            amountEl.textContent =
+                "Rp " + (amount || 0).toLocaleString("id-ID");
+        if (statusEl) {
+            statusEl.textContent = "Menunggu pembayaran...";
+            statusEl.style.color = "var(--text-muted)";
+        }
+        if (dotEl) dotEl.style.background = "var(--text-muted)";
+        if (qrImg) {
+            qrImg.src = "";
+            qrImg.classList.add("hidden");
+        }
+        if (qrLoading) qrLoading.classList.remove("hidden");
+
+        // Sandbox section
+        if (sandboxSec) {
+            if (isSandbox) {
+                sandboxSec.classList.remove("hidden");
+                if (sandboxUrl) sandboxUrl.value = qrCodeUrl || "";
+            } else {
+                sandboxSec.classList.add("hidden");
+            }
+        }
+
+        // Show modal
+        if (modal) {
+            modal.classList.remove("hidden");
+            modal.setAttribute("aria-hidden", "false");
+        }
+
+        // Load QR image
+        const qrSrc =
+            qrisImageBaseUrl + "?order_id=" + encodeURIComponent(orderId);
+        if (qrImg) {
+            const tmpImg = new Image();
+            tmpImg.onload = () => {
+                qrImg.src = qrSrc;
+                qrImg.classList.remove("hidden");
+                if (qrLoading) qrLoading.classList.add("hidden");
+            };
+            tmpImg.onerror = () => {
+                if (qrLoading)
+                    qrLoading.innerHTML =
+                        '<p style="color:var(--danger);font-size:0.75rem;text-align:center;">Gagal memuat QR.<br>Refresh halaman.</p>';
+            };
+            tmpImg.src = qrSrc;
+        }
+
+        // Start polling
+        stopPaymentPoll();
+        _paymentPollTimer = setInterval(() => pollPaymentStatus(orderId), 3000);
+    }
+
+    async function pollPaymentStatus(orderId) {
+        try {
+            const url =
+                paymentStatusBaseUrl +
+                "?order_id=" +
+                encodeURIComponent(orderId);
+            const res = await fetch(url, {
+                headers: {
+                    Accept: "application/json",
+                    "X-CSRF-TOKEN": csrfToken,
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+            });
+            const data = await res.json().catch(() => ({}));
+
+            if (data.status === "paid") {
+                stopPaymentPoll();
+                const statusEl = document.getElementById(
+                    "payment-modal-status",
+                );
+                const dotEl = document.getElementById(
+                    "payment-modal-status-dot",
+                );
+                if (statusEl) {
+                    statusEl.textContent = "Pembayaran berhasil!";
+                    statusEl.style.color = "var(--success)";
+                }
+                if (dotEl) dotEl.style.background = "var(--success)";
+                setTimeout(() => {
+                    closePaymentModal();
+                    stateMachine.setState(stateMachine.STATES.CAPTURE);
+                }, 1200);
+            }
+        } catch (_) {
+            /* ignore */
+        }
+    }
+
+    function closePaymentModal() {
+        stopPaymentPoll();
+        const modal = document.getElementById("payment-qris-modal");
+        if (modal) {
+            modal.classList.add("hidden");
+            modal.setAttribute("aria-hidden", "true");
+        }
+        _currentOrderId = null;
+    }
+
+    document
+        .getElementById("btn-payment-modal-close")
+        ?.addEventListener("click", closePaymentModal);
+    document
+        .getElementById("btn-payment-modal-cancel")
+        ?.addEventListener("click", closePaymentModal);
+    document
+        .getElementById("btn-payment-modal-copy")
+        ?.addEventListener("click", () => {
+            const urlEl = document.getElementById("payment-modal-sandbox-url");
+            if (!urlEl) return;
+            navigator.clipboard.writeText(urlEl.value).then(() => {
+                const btn = document.getElementById("btn-payment-modal-copy");
+                if (btn) {
+                    const orig = btn.textContent;
+                    btn.textContent = "Copied!";
+                    setTimeout(() => {
+                        btn.textContent = orig;
+                    }, 2000);
+                }
+            });
+        });
+
+    // ─────────────────────────────────────────────────────────
     // REVIEW ORDER — LANJUT KE PEMBAYARAN
     // ─────────────────────────────────────────────────────────
 
@@ -812,45 +968,7 @@ document.addEventListener("DOMContentLoaded", () => {
             hideReviewError();
 
             try {
-                // Kasus: voucher parsial sudah diterapkan, total > 0 → createPayment dengan voucher_code
-                if (appliedVoucherCode && totalToPay > 0) {
-                    if (!createPaymentUrl) {
-                        resetButton();
-                        return;
-                    }
-                    const res = await fetch(createPaymentUrl, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRF-TOKEN": csrfToken,
-                            Accept: "application/json",
-                            "X-Requested-With": "XMLHttpRequest",
-                        },
-                        body: JSON.stringify({
-                            copy_count: selectedCopyCount,
-                            voucher_code: appliedVoucherCode,
-                        }),
-                    });
-                    const data = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                        showReviewError(data.message || `Error ${res.status}`);
-                        resetButton();
-                        return;
-                    }
-                    const redirectUrl = data.redirect_url;
-                    if (!redirectUrl) {
-                        showReviewError(
-                            data.message ||
-                                "Tidak ada redirect. Coba mulai sesi baru.",
-                        );
-                        resetButton();
-                        return;
-                    }
-                    window.location.href = redirectUrl;
-                    return;
-                }
-
-                // Kasus: gratis (subtotal 0 atau voucher 100% sudah di-apply sebelumnya via button)
+                // Kasus: gratis
                 if (totalToPay <= 0) {
                     if (!confirmFreeUrl) {
                         resetButton();
@@ -875,11 +993,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
-                // Kasus: berbayar tanpa voucher
+                // Kasus: berbayar (dengan atau tanpa voucher parsial)
                 if (!createPaymentUrl) {
                     resetButton();
                     return;
                 }
+                const body = { copy_count: selectedCopyCount };
+                if (appliedVoucherCode && totalToPay > 0)
+                    body.voucher_code = appliedVoucherCode;
+
                 const res = await fetch(createPaymentUrl, {
                     method: "POST",
                     headers: {
@@ -888,31 +1010,30 @@ document.addEventListener("DOMContentLoaded", () => {
                         Accept: "application/json",
                         "X-Requested-With": "XMLHttpRequest",
                     },
-                    body: JSON.stringify({ copy_count: selectedCopyCount }),
+                    body: JSON.stringify(body),
                 });
                 const data = await res.json().catch(() => ({}));
-                if (data.snap_token) {
-                    showReviewError(
-                        "Backend masih mengembalikan Snap. Pastikan deploy terbaru.",
-                    );
-                    resetButton();
-                    return;
-                }
-                const redirectUrl = data.redirect_url;
-                if (!redirectUrl) {
-                    showReviewError(
-                        data.message ||
-                            "Tidak ada redirect. Coba mulai sesi baru.",
-                    );
-                    resetButton();
-                    return;
-                }
+
                 if (!res.ok) {
                     showReviewError(data.message || `Error ${res.status}`);
                     resetButton();
                     return;
                 }
-                window.location.href = redirectUrl;
+
+                const orderId = data.order_id;
+                const amount = data.amount ?? totalToPay;
+
+                if (!orderId) {
+                    showReviewError(
+                        data.message || "Gagal membuat pembayaran.",
+                    );
+                    resetButton();
+                    return;
+                }
+
+                // ✅ Tampilkan modal alih-alih redirect
+                resetButton();
+                openPaymentModal(orderId, amount, data.qr_code_url);
             } catch (err) {
                 console.error("Payment error", err);
                 showReviewError(
@@ -1404,12 +1525,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (qrContainer) {
-            qrContainer.innerHTML = "";
             const qrImg = document.createElement("img");
-            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(finalResultUrl)}`;
             qrImg.alt = "QR Code";
             qrImg.className = "w-full max-w-xs";
-            qrContainer.appendChild(qrImg);
+
+            qrImg.onload = () => {
+                qrContainer.innerHTML = "";
+                qrContainer.appendChild(qrImg);
+            };
+            qrImg.onerror = () => {
+                qrContainer.innerHTML = `<p class="text-xs" style="color:var(--danger);">Gagal memuat QR Code</p>`;
+            };
+
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(finalResultUrl)}`;
         }
 
         if (resultUrlEl) resultUrlEl.textContent = finalResultUrl;

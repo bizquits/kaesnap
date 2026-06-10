@@ -59,7 +59,7 @@ class CreateProject extends CreateRecord
     {
         $this->record->setting()->create([
             'price_per_session' => 0,
-            'copies' => 1,
+            'copies' => 5,
             'max_retakes' => 3,
             'auto_print' => true,
         ]);

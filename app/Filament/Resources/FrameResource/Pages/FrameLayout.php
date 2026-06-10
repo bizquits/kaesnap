@@ -22,8 +22,8 @@ class FrameLayout extends Page
 
     public Frame $record;
 
-    public int    $canvasWidth  = 1200;
-    public int    $canvasHeight = 1800;
+    public int    $canvasWidth  = 945;
+    public int    $canvasHeight = 1299;
 
     /** 'behind' = slot foto di BELAKANG overlay | 'front' = slot foto di DEPAN overlay */
     public string $photoLayer = 'behind';
@@ -52,8 +52,8 @@ class FrameLayout extends Page
         $this->name   = $record->name ?? 'Untitled Frame';
 
         // Ukuran canvas dari database (sudah dipilih saat Buat Baru)
-        $this->canvasWidth  = (int) ($record->canvas_width  ?? 1200);
-        $this->canvasHeight = (int) ($record->canvas_height ?? 1800);
+        $this->canvasWidth  = (int) ($record->canvas_width  ?? 945);
+        $this->canvasHeight = (int) ($record->canvas_height ?? 1299);
         $this->photoLayer   = $record->photo_layer ?? 'behind';
 
         $this->loadSlots();

@@ -56,7 +56,11 @@
                         Ukuran Frame
                     </label>
                     <div class="flex gap-2">
-                        @foreach (['1200x1800' => '1200×1800', '1200x2400' => '1200×2400', '1200x3600' => '1200×3600'] as $val => $label)
+                        @foreach ([
+                        '945x1299' => '945 × 1299',
+                        '945x2598' => '945 × 2598',
+                        '945x3897' => '945 × 3897',
+                        ] as $val => $label)
                         <button
                             type="button"
                             wire:click="selectSize('{{ $val }}')"

@@ -62,9 +62,35 @@ export function initFrames(stateMachine, session) {
     );
     btnNext?.addEventListener("click", () => {
         if (!selectedFrameId) return;
-        session.saveFrame(selectedFrameId).then(() => {
-            stateMachine.setState(stateMachine.STATES.REVIEW_ORDER);
-        });
+
+        // Loading state: disable button & show spinner
+        btnNext.disabled = true;
+        btnNext.classList.add("opacity-75", "cursor-not-allowed");
+        btnNext.classList.remove("cursor-pointer");
+        btnNext.innerHTML = `
+            <svg class="animate-spin h-4 w-4 inline-block mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            Bentar
+        `;
+
+        session
+            .saveFrame(selectedFrameId)
+            .then(() => {
+                btnNext.disabled = false;
+                btnNext.innerHTML = "Lanjut";
+                btnNext.classList.remove("opacity-75", "cursor-not-allowed");
+                btnNext.classList.add("cursor-pointer");
+                stateMachine.setState(stateMachine.STATES.REVIEW_ORDER);
+            })
+            .catch(() => {
+                // Restore button if error
+                btnNext.disabled = false;
+                btnNext.innerHTML = "Lanjut";
+                btnNext.classList.remove("opacity-75", "cursor-not-allowed");
+                btnNext.classList.add("cursor-pointer");
+            });
     });
 
     return {

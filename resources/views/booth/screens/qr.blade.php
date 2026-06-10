@@ -1,19 +1,34 @@
+{{-- NOTE: Save to qr.blade.php --}}
 <div class="kiosk-screen flex h-full w-full flex-col items-center justify-center p-6 gap-6">
-    <div class="flex flex-col items-center gap-5 animate-fade-up text-center">
+    <div class="crt-overlay"></div>
+    <div class="flex flex-col items-center gap-6 animate-fade-up text-center">
 
+        {{-- Title --}}
         <div>
-            <h1 class="text-2xl font-bold tracking-tight" style="color:var(--text);">Foto Anda Siap</h1>
-            <p class="mt-2 text-sm" style="color:var(--text-muted);">Scan QR code untuk mengunduh</p>
+            <p style="font-family:'Press Start 2P',monospace;font-size:0.55rem;
+                       color:var(--blue);letter-spacing:0.1em;text-transform:uppercase;
+                       text-shadow:0 0 10px var(--blue-glow);margin-bottom:0.75rem;">
+                ◆ STAGE CLEAR ◆
+            </p>
+            <h1 style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:2rem;
+                        letter-spacing:0.12em;text-transform:uppercase;color:var(--text);
+                        text-shadow:0 0 16px var(--blue-glow);margin:0 0 0.25rem;">
+                YOUR PHOTO IS READY
+            </h1>
+            <p style="font-family:'Rajdhani',sans-serif;font-size:0.85rem;font-weight:600;
+                       letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin:0;">
+                Scan QR code to download
+            </p>
         </div>
 
-        <div id="qr-container"
-            class="rounded-2xl p-5 shadow-2xl"
-            style="background:#fff; display:inline-block;"></div>
+        {{-- QR Code --}}
+        <div id="qr-container"></div>
 
+        {{-- New session --}}
         <button type="button" id="btn-reset"
-            class="mt-2 py-3.5 px-10 text-sm font-medium transition-opacity hover:opacity-70"
-            style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-muted);">
-            Sesi Baru
+            class="kiosk-btn-primary"
+            style="padding:0.875rem 2.5rem;font-size:0.8rem;">
+            ▶ NEW GAME
         </button>
     </div>
 </div>

@@ -19,9 +19,7 @@ class UserWithDefaultsSeeder extends Seeder
     private static function templatePhotoSlots(): array
     {
         return [
-            'template-1' => [['id' => 1, 'x' => 475, 'y' => 400, 'width' => 875, 'height' => 670]],
-            'template-2' => [['id' => 1, 'x' => 505, 'y' => 800, 'width' => 745, 'height' => 675]],
-            'template-3' => [['id' => 1, 'x' => 475, 'y' => 432, 'width' => 875, 'height' => 610]],
+            'template-1' => [['id' => 1, 'x' => 37, 'y' => 62, 'width' => 875, 'height' => 670]],
         ];
     }
 
@@ -92,14 +90,10 @@ class UserWithDefaultsSeeder extends Seeder
 
         // Download template frames if not exists
         $template1Path = $this->ensureFileFromUrl($baseUrl . '/template-frame/template-1.png', 'template-frame/template-1.png');
-        $template2Path = $this->ensureFileFromUrl($baseUrl . '/template-frame/template-2.png', 'template-frame/template-2.png');
-        $template3Path = $this->ensureFileFromUrl($baseUrl . '/template-frame/template-3.png', 'template-frame/template-3.png');
         $generalHomescreenPath = $this->ensureFileFromUrl($baseUrl . '/general_homescreen.png', 'general_homescreen.png');
 
         $templateFrames = [
             ['name' => 'Template 1', 'file' => $template1Path, 'key' => 'template-1'],
-            ['name' => 'Template 2', 'file' => $template2Path, 'key' => 'template-2'],
-            ['name' => 'Template 3', 'file' => $template3Path, 'key' => 'template-3'],
         ];
 
         $allSlots = self::templatePhotoSlots();
@@ -154,8 +148,9 @@ class UserWithDefaultsSeeder extends Seeder
         $project->setting()->firstOrCreate(
             ['project_id' => $project->id],
             [
-                'price_per_session' => 10000,
-                'copies' => 1,
+                'price_per_session' => ["1" => 10000, "2" => 13000, "3" => 16000],
+                'copy_prices' => 5000,
+                'copies' => 5,
                 'max_retakes' => 3,
                 'countdown_seconds' => 3,
                 'auto_print' => true,

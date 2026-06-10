@@ -7,6 +7,7 @@
  * - Background rendering
  * - Component positioning
  * - Start button styling
+ * - Theme variations
  */
 
 /* ===========================
@@ -22,6 +23,7 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    background: var(--bg, #fff);
 }
 
 /* ===========================
@@ -35,6 +37,7 @@
     height: 100%;
     object-fit: cover;
     z-index: 0;
+    image-rendering: crisp-edges;
 }
 
 /* Fallback gradient when no background */
@@ -63,6 +66,8 @@
 .welcome-content--positioned {
     display: block;
     padding: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .welcome-content--positioned .welcome-component {
@@ -83,6 +88,12 @@
     height: auto;
 }
 
+.welcome-content--positioned .welcome-component--button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* ===========================
    COMPONENT ITEMS
    =========================== */
@@ -97,6 +108,8 @@
     font-weight: 600;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     color: #fff;
+    margin: 0;
+    padding: 0;
 }
 
 .welcome-text--small {
@@ -129,7 +142,10 @@
     max-height: 40vh;
     object-fit: contain;
     border-radius: 0.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    image-rendering: crisp-edges;
 }
 
 /* ===========================
@@ -159,7 +175,13 @@
     border-radius: 9999px;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    box-shadow:
+        0 10px 15px -3px rgba(0, 0, 0, 0.1),
+        0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    font-family: inherit;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 /* Button inside positioned component: respect wrapper width/height (editor-set W/H) */
@@ -172,15 +194,44 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 0;
+    border-radius: 0;
 }
 
 .welcome-start-btn:hover {
     transform: scale(1.05);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow:
+        0 20px 25px -5px rgba(0, 0, 0, 0.1),
+        0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .welcome-start-btn:active {
     transform: scale(0.98);
+}
+
+.welcome-start-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ===========================
+   THEME VARIATIONS
+   =========================== */
+
+/* Retro Pixel Art Theme */
+.retro-pixel-theme {
+    font-family: "Press Start 2P", "Courier New", monospace;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+}
+
+.retro-pixel-theme .welcome-background {
+    image-rendering: pixelated;
+}
+
+.retro-pixel-theme .welcome-image {
+    image-rendering: pixelated;
 }
 
 /* ===========================
@@ -208,6 +259,40 @@
     .welcome-content {
         padding: 1rem;
     }
+
+    .welcome-actions {
+        top: 0.5rem;
+        right: 0.5rem;
+        gap: 0.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .welcome-text--small {
+        font-size: 0.875rem;
+    }
+
+    .welcome-text--medium {
+        font-size: 1.25rem;
+    }
+
+    .welcome-text--large {
+        font-size: 1.75rem;
+    }
+
+    .welcome-start-btn {
+        padding: 0.5rem 1.5rem;
+        font-size: 0.875rem;
+    }
+
+    .welcome-actions {
+        gap: 0.25rem;
+    }
+
+    .booth-icon-btn {
+        width: 32px !important;
+        height: 32px !important;
+    }
 }
 
 @media (min-width: 1920px) {
@@ -226,5 +311,33 @@
     .welcome-start-btn {
         padding: 1.25rem 3rem;
         font-size: 1.5rem;
+    }
+
+    .welcome-content {
+        padding: 3rem;
+    }
+}
+
+/* Landscape orientation adjustments */
+@media (orientation: landscape) and (max-height: 600px) {
+    .welcome-text--small {
+        font-size: 0.875rem;
+    }
+
+    .welcome-text--medium {
+        font-size: 1.25rem;
+    }
+
+    .welcome-text--large {
+        font-size: 1.75rem;
+    }
+
+    .welcome-start-btn {
+        padding: 0.5rem 1.5rem;
+        font-size: 0.875rem;
+    }
+
+    .welcome-image {
+        max-height: 25vh;
     }
 }
