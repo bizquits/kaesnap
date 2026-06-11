@@ -242,30 +242,28 @@ export async function disconnectPrinter() {
  * @param {number} width - Image width
  * @param {number} height - Image height
  */
-function floydSteinbergDithering(data, width, height, threshold = 160) {
-    const getIndex = (x, y) => (width * y + x) * 4;
+function floydSteinbergDithering(data, w, h, threshold) {
+    const idx = (x, y) => (w * y + x) * 4;
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = getIndex(x, y);
-            const oldPixel = data[idx];
-            const newPixel = oldPixel < threshold ? 0 : 255;
-            const error = oldPixel - newPixel;
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const i = idx(x, y);
+            const old = data[i];
+            const nw = old < threshold ? 0 : 255;
+            const err = old - nw;
 
-            // Set RGB channels to new pixel value
-            data[idx] = data[idx + 1] = data[idx + 2] = newPixel;
+            data[i] = data[i + 1] = data[i + 2] = nw;
 
-            // Helper function to add error to neighboring pixels
-            const add = (px, py, factor) => {
-                if (px >= 0 && px < width && py >= 0 && py < height) {
-                    const i = getIndex(px, py);
-                    const val = data[i] + error * factor;
-                    const clampedVal = Math.max(0, Math.min(255, val));
-                    data[i] = data[i + 1] = data[i + 2] = clampedVal;
+            const add = (x2, y2, f) => {
+                if (x2 >= 0 && x2 < w && y2 >= 0 && y2 < h) {
+                    const j = idx(x2, y2);
+                    data[j] =
+                        data[j + 1] =
+                        data[j + 2] =
+                            Math.max(0, Math.min(255, data[j] + err * f));
                 }
             };
 
-            // Distribute error to neighboring pixels
             add(x + 1, y, 7 / 16);
             add(x - 1, y + 1, 3 / 16);
             add(x, y + 1, 5 / 16);
@@ -295,7 +293,7 @@ async function convertToESCPos(imageDataUrl, width = 640) {
 
                 // Calculate height maintaining aspect ratio
                 const aspectRatio = img.height / img.width;
-                const height = Math.round(width * aspectRatio);
+                const height = Math.min(Math.round(width * aspectRatio), 1800);
 
                 canvas.width = width;
                 canvas.height = height;
@@ -307,8 +305,20 @@ async function convertToESCPos(imageDataUrl, width = 640) {
                 const imageData = ctx.getImageData(0, 0, width, height);
                 const data = imageData.data;
 
+                for (let i = 0; i < data.length; i += 4) {
+                    const alpha = data[i + 3] / 255;
+                    data[i] = Math.round(data[i] * alpha + 255 * (1 - alpha));
+                    data[i + 1] = Math.round(
+                        data[i + 1] * alpha + 255 * (1 - alpha),
+                    );
+                    data[i + 2] = Math.round(
+                        data[i + 2] * alpha + 255 * (1 - alpha),
+                    );
+                    data[i + 3] = 255;
+                }
+
                 const brightness = 60; // naikkan jika masih gelap
-                const contrast = 0.85; // turunkan untuk kurangi titik hitam
+                const threshold = 160; // batas untuk dither
 
                 for (let i = 0; i < data.length; i += 4) {
                     const r = data[i],
@@ -316,15 +326,11 @@ async function convertToESCPos(imageDataUrl, width = 640) {
                         b = data[i + 2];
                     let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                     gray = Math.min(255, gray + brightness);
-                    gray = Math.min(
-                        255,
-                        Math.max(0, (gray - 128) * contrast + 128),
-                    );
                     data[i] = data[i + 1] = data[i + 2] = gray;
                 }
 
                 // Apply Floyd-Steinberg dithering
-                floydSteinbergDithering(data, width, height, 160);
+                floydSteinbergDithering(data, width, height, threshold);
 
                 // Convert to 1-bit bitmap (8 pixels per byte)
                 const bytesPerRow = Math.ceil(width / 8);
@@ -367,8 +373,11 @@ async function convertToESCPos(imageDataUrl, width = 640) {
                 commands.push(...Array.from(bitmapData));
 
                 // Feed paper and cut (if supported)
-                commands.push(0x1d, 0x56, 0x00); // GS V 0 (Cut paper)
-                commands.push(0x0a); // Line feed
+                // commands.push(0x1d, 0x56, 0x00); // GS V 0 (Cut paper)
+                // commands.push(0x0a); // Line feed
+
+                commands.push(0x1b, 0x64, 0x04); // ESC d 4 — feed 4 lines
+                commands.push(0x1d, 0x56, 0x41, 0x00); // GS V 65 0 — full cut
 
                 // Reset alignment to left (optional, for next print)
                 commands.push(0x1b, 0x61, 0x00); // ESC a 0 (Left align)

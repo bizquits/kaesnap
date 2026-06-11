@@ -13,7 +13,8 @@
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: http://localhost:* http://127.0.0.1:*; frame-src 'self' blob:; style-src 'self' 'unsafe-inline' https: http://localhost:* http://127.0.0.1:*; connect-src 'self' wss: ws: https: http://localhost:* http://127.0.0.1:* blob:; img-src {{ $cspImgSrc }}; font-src 'self' data: https:">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
     @vite(['resources/css/booth.css', 'resources/js/booth/kiosk.js'])
 </head>
 
