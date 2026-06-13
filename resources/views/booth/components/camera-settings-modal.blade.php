@@ -148,6 +148,36 @@
             </div>
         </div>
 
+        {{-- Print Quality --}}
+        <div class="flex flex-col gap-3 mb-5">
+            <p class="text-xs font-semibold uppercase tracking-widest"
+                style="color:var(--text-muted); letter-spacing:.08em;">Kualitas Cetak</p>
+
+            {{-- Threshold --}}
+            <div>
+                <div class="flex justify-between mb-1">
+                    <label class="text-xs" style="color:var(--text-muted);">Threshold (Kontras)</label>
+                    <span class="text-xs" style="color:var(--text-dim);">50 – 220</span>
+                </div>
+                <input type="number" id="print-threshold"
+                    min="50" max="220" value="160" step="1"
+                    placeholder="160"
+                    class="kiosk-input" style="font-size:0.85rem;" />
+            </div>
+
+            {{-- Brightness --}}
+            <div>
+                <div class="flex justify-between mb-1">
+                    <label class="text-xs" style="color:var(--text-muted);">Brightness Cetak</label>
+                    <span class="text-xs" style="color:var(--text-dim);">40 – 180</span>
+                </div>
+                <input type="number" id="print-brightness"
+                    min="40" max="180" value="60" step="1"
+                    placeholder="60"
+                    class="kiosk-input" style="font-size:0.85rem;" />
+            </div>
+        </div>
+
         {{-- Printer --}}
         <div class="flex flex-col gap-3 mb-5 pt-4"
             style="border-top:1px solid var(--border);">

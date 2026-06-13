@@ -163,6 +163,7 @@ function showContentPanel() {
     loadCameras().then((selectedId) => {
         if (selectedId) startPreview(selectedId);
     });
+    loadPrintSettings();
     updatePrinterTypeSelect();
     updatePrinterStatus();
 
@@ -308,6 +309,15 @@ function loadCameras() {
         if (selectedId) localStorage.setItem(STORAGE_KEY, selectedId);
         return selectedId;
     });
+}
+
+function loadPrintSettings() {
+    const th = localStorage.getItem("photobooth_printThreshold") ?? "160";
+    const br = localStorage.getItem("photobooth_printBrightness") ?? "60";
+    const thEl = document.getElementById("print-threshold");
+    const brEl = document.getElementById("print-brightness");
+    if (thEl) thEl.value = th;
+    if (brEl) brEl.value = br;
 }
 
 function onSelectChange() {
@@ -504,6 +514,17 @@ export function initCameraSettings() {
         const printerTypeSel = getPrinterTypeSelect();
         if (printerTypeSel?.value)
             localStorage.setItem(PRINTER_TYPE_KEY, printerTypeSel.value);
+
+        const thEl = document.getElementById("print-threshold");
+        const brEl = document.getElementById("print-brightness");
+        const th = Math.min(
+            220,
+            Math.max(50, parseInt(thEl?.value ?? "160", 10)),
+        );
+        const br = Math.min(180, Math.max(40, parseFloat(brEl?.value ?? "60")));
+        localStorage.setItem("photobooth_printThreshold", th);
+        localStorage.setItem("photobooth_printBrightness", br);
+
         closeModal();
     });
 

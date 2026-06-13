@@ -236,13 +236,25 @@ export async function disconnectPrinter() {
     console.log("[Printer] Disconnected");
 }
 
+function getPrintSettings() {
+    return {
+        threshold: parseInt(
+            localStorage.getItem("photobooth_printThreshold") ?? "128",
+            10,
+        ),
+        brightness: parseFloat(
+            localStorage.getItem("photobooth_printBrightness") ?? "100",
+        ),
+    };
+}
+
 /**
  * Floyd-Steinberg Dithering
  * @param {Uint8ClampedArray} data - ImageData RGBA array
  * @param {number} width - Image width
  * @param {number} height - Image height
  */
-function floydSteinbergDithering(data, w, h, threshold) {
+function floydSteinbergDithering(data, w, h, threshold = 160) {
     const idx = (x, y) => (w * y + x) * 4;
 
     for (let y = 0; y < h; y++) {
@@ -304,6 +316,7 @@ async function convertToESCPos(imageDataUrl, width = 640) {
                 // Get image data
                 const imageData = ctx.getImageData(0, 0, width, height);
                 const data = imageData.data;
+                const { threshold, brightness } = getPrintSettings();
 
                 for (let i = 0; i < data.length; i += 4) {
                     const alpha = data[i + 3] / 255;
@@ -316,9 +329,6 @@ async function convertToESCPos(imageDataUrl, width = 640) {
                     );
                     data[i + 3] = 255;
                 }
-
-                const brightness = 60; // naikkan jika masih gelap
-                const threshold = 160; // batas untuk dither
 
                 for (let i = 0; i < data.length; i += 4) {
                     const r = data[i],
