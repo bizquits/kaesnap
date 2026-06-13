@@ -75,18 +75,43 @@
 
                     {{-- Start camera overlay --}}
                     <div id="camera-start-overlay"
-                        class="absolute inset-0 flex items-center justify-center"
-                        style="background:rgba(3,7,20,0.75);backdrop-filter:blur(4px);z-index:6;">
-                        <div style="text-align:center;">
-                            <div style="font-family:'Press Start 2P',monospace;font-size:0.55rem;
-                                        color:var(--text-dim);letter-spacing:0.1em;margin-bottom:1.5rem;">
-                                CAMERA OFFLINE
-                            </div>
-                            <button type="button" id="btn-start-camera" class="kiosk-btn-primary"
-                                style="font-size:0.8rem;padding:0.875rem 2rem;">
-                                INITIALIZE
-                            </button>
+                        class="absolute inset-0 flex flex-col items-center justify-center gap-4"
+                        style="background:rgba(3,7,20,0.82);backdrop-filter:blur(4px);z-index:6;">
+
+                        {{-- Animated camera icon --}}
+                        <div style="position:relative;width:56px;height:56px;">
+                            <div style="position:absolute;inset:0;border-radius:50%;
+                    border:2px solid var(--blue);
+                    animation:neonPulse 1.5s ease-in-out infinite;"></div>
+                            <div style="position:absolute;inset:6px;border-radius:50%;
+                    border:1px solid var(--cyan);opacity:0.5;
+                    animation:neonPulse 1.5s ease-in-out infinite reverse;"></div>
+                            <svg style="position:absolute;inset:0;margin:auto;width:24px;height:24px;
+                    color:var(--cyan);filter:drop-shadow(0 0 6px var(--cyan));"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
                         </div>
+
+                        {{-- Loading dots --}}
+                        <div class="arcade-loading">
+                            <span></span><span></span><span></span>
+                        </div>
+
+                        {{-- Text --}}
+                        <p style="font-family:'Press Start 2P',monospace;font-size:0.5rem;
+               color:var(--text-muted);letter-spacing:0.12em;
+               animation:arcadeBlink 1.4s step-end infinite;">
+                            INITIALIZING CAMERA...
+                        </p>
+
+                        {{-- Hidden button (tetap ada untuk trigger JS) --}}
+                        <button type="button" id="btn-start-camera"
+                            style="position:absolute;opacity:0;pointer-events:none;"
+                            aria-hidden="true" tabindex="-1">
+                        </button>
                     </div>
 
                     {{-- Start capture overlay --}}
@@ -97,33 +122,6 @@
                             style="font-size:0.85rem;padding:1rem 2.5rem;">
                             ▶ START
                         </button>
-                    </div>
-                </div>
-
-                {{-- Exposure slider --}}
-                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.75rem 1rem;">
-                    <div class="flex items-center justify-between mb-2">
-                        <label for="capture-exposure"
-                            style="font-family:'Rajdhani',sans-serif;font-size:0.65rem;font-weight:700;
-                                   letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);">
-                            EXPOSURE
-                        </label>
-                        <span id="exposure-value"
-                            style="font-family:'Orbitron',monospace;font-size:0.65rem;font-weight:700;
-                                   color:var(--cyan);text-shadow:0 0 6px var(--cyan-glow);">50</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <svg class="h-3.5 w-3.5 shrink-0" style="color:var(--text-dim);" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        <input type="range" id="capture-exposure"
-                            min="0" max="100" value="50"
-                            class="flex-1 cursor-pointer"
-                            style="accent-color:var(--blue);"
-                            aria-label="Exposure" />
-                        <svg class="h-4 w-4 shrink-0" style="color:var(--text-muted);" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" />
-                        </svg>
                     </div>
                 </div>
             </div>

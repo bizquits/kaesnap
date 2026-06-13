@@ -386,6 +386,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     });
                     camera?.reset();
                     applyCaptureSlotOverlay(framesData, getSelectedFrameId());
+                    setTimeout(() => camera?.start(), 5000);
                 }
             },
             PREVIEW: (state, prev) => {

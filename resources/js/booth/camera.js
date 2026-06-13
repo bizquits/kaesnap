@@ -433,6 +433,7 @@ export function createCamera(session, options = {}) {
     exposureSlider?.addEventListener("input", applyExposureFromSlider);
 
     return {
+        start: startStream,
         stop: stopStream,
         getPhotos: () => [...photos],
         setPhotos: (p) => {
